@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Amostra representativa de tiles comparada (incluindo bordas e áreas com alpha)
-- [ ] Métrica de erro (ex.: PSNR/diferença média por canal, alpha incluído) reportada
-- [ ] Veredito claro: pirâmide padrão sim/não, com offset de linha/coluna se houver
+- [x] Amostra representativa de tiles comparada (incluindo bordas e áreas com alpha)
+- [x] Métrica de erro (ex.: PSNR/diferença média por canal, alpha incluído) reportada
+- [x] Veredito claro: pirâmide padrão sim/não, com offset de linha/coluna se houver

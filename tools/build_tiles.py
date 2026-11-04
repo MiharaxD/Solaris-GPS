@@ -199,6 +199,89 @@ def cmd_manifest(cache: Path, map_id: str, name: str, force: bool) -> int:
     return 0
 
 
+def _tile_rgba(map_dir: Path, z: int, r: int, c: int, size: tuple[int, int]) -> "np.ndarray":
+    import numpy as np
+
+    p = map_dir / str(z) / f"{r}_{c}.webp"
+    if not p.exists() or p.stat().st_size == 0:
+        return np.zeros((size[1], size[0], 4), np.float32)
+    with Image.open(p) as im:
+        return np.asarray(im.convert("RGBA"), np.float32)
+
+
+def _compare(ref: "np.ndarray", test: "np.ndarray") -> tuple[float, float]:
+    """(erro médio RGB onde ambos têm alpha>0, erro médio de alpha)."""
+    import numpy as np
+
+    both = (ref[..., 3] > 0) & (test[..., 3] > 0)
+    rgb = float(np.abs(ref[..., :3] - test[..., :3])[both].mean()) if both.any() else float("nan")
+    alpha = float(np.abs(ref[..., 3] - test[..., 3]).mean())
+    return rgb, alpha
+
+
+def cmd_pyramid(cache: Path, map_id: str, lo: int, samples: int) -> int:
+    """Verifica se tile (r,c) no zoom lo == filhas (2r..2r+1, 2c..2c+1) do zoom lo+1 reduzidas.
+
+    Também testa deslocamentos de ±1 tile (no zoom alto) pra detectar grades desalinhadas.
+    """
+    import random
+
+    map_dir = cache / map_id
+    scans = scan_map(map_dir)
+    hi = lo + 1
+    if lo not in scans or hi not in scans:
+        raise SystemExit(f"Precisa dos zooms {lo} e {hi}; disponíveis: {sorted(scans)}")
+    size = first_tile_size(map_dir, scans[lo])
+    tiles = sorted(scans[lo].tiles)
+    rng = random.Random(42)
+    (r0, r1), (c0, c1) = scans[lo].row_range, scans[lo].col_range
+    border = [t for t in tiles if t[0] in (r0, r1) or t[1] in (c0, c1)]
+    pick = rng.sample(tiles, min(samples, len(tiles))) + rng.sample(border, min(8, len(border)))
+
+    print(f"{map_id}: z{lo} vs z{hi} reduzido, {len(pick)} tiles amostradas (inclui bordas)")
+    offsets = [(dr, dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)]
+    totals = {o: [0.0, 0.0, 0] for o in offsets}
+    worst: list[tuple[float, tuple[int, int]]] = []
+    for r, c in pick:
+        ref = _tile_rgba(map_dir, lo, r, c, size)
+        for dr, dc in offsets:
+            test = _shifted_parent(map_dir, hi, r, c, dr, dc, size)
+            rgb, al = _compare(ref, test)
+            t = totals[(dr, dc)]
+            if rgb == rgb:  # não-NaN
+                t[0] += rgb
+                t[2] += 1
+            t[1] += al
+            if (dr, dc) == (0, 0):
+                worst.append((rgb if rgb == rgb else -1, (r, c)))
+    print(f"{'offset (lin,col) z' + str(hi):>22} {'erro RGB médio':>15} {'erro alpha médio':>17}")
+    for o in offsets:
+        s_rgb, s_al, n = totals[o]
+        print(f"{str(o):>22} {s_rgb / max(n, 1):>15.2f} {s_al / len(pick):>17.2f}")
+    worst.sort(reverse=True)
+    print("piores tiles no offset (0,0):", [(f"{e:.2f}", t) for e, t in worst[:5]])
+    return 0
+
+
+def _shifted_parent(map_dir: Path, hi: int, r: int, c: int, dr: int, dc: int,
+                    size: tuple[int, int]) -> "np.ndarray":
+    """Junta as 4 filhas (2r+dr.., 2c+dc..) do zoom hi e reduz 2x2→1 com alpha pré-multiplicado."""
+    import numpy as np
+
+    w, h = size
+    big = np.zeros((2 * h, 2 * w, 4), np.float32)
+    for i in (0, 1):
+        for j in (0, 1):
+            big[i * h:(i + 1) * h, j * w:(j + 1) * w] = _tile_rgba(
+                map_dir, hi, 2 * r + i + dr, 2 * c + j + dc, size)
+    a = big[..., 3:4] / 255.0
+    pre = np.concatenate([big[..., :3] * a, a * 255.0], axis=2)
+    small = pre.reshape(h, 2, w, 2, 4).mean(axis=(1, 3))
+    alpha = small[..., 3:4] / 255.0
+    rgb = np.where(alpha > 0, small[..., :3] / np.maximum(alpha, 1e-6), 0)
+    return np.concatenate([rgb, small[..., 3:4]], axis=2)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cache", type=Path, default=DEFAULT_CACHE)
@@ -209,11 +292,17 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("map_id")
     m.add_argument("--name", required=True)
     m.add_argument("--force", action="store_true")
+    py = sub.add_parser("pyramid", help="testa se zoom lo == zoom lo+1 reduzido")
+    py.add_argument("map_id")
+    py.add_argument("--lo", type=int, required=True)
+    py.add_argument("--samples", type=int, default=40)
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     if args.cmd == "inventory":
         return cmd_inventory(args.cache, args.alpha)
+    if args.cmd == "pyramid":
+        return cmd_pyramid(args.cache, args.map_id, args.lo, args.samples)
     return cmd_manifest(args.cache, args.map_id, args.name, args.force)
 
 
