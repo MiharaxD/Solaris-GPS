@@ -258,3 +258,13 @@ body {
   stroke-width: 3;
   fill: var(--accent);
 }
+
+.calib-ignored {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.calib-ignored ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}

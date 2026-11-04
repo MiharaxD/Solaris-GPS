@@ -37,7 +37,8 @@ export class CalibrationPanel {
   readonly root: HTMLElement;
   private info: MapInfo | null = null;
   private data: MapDataV1 = asMapDataV1(null);
-  private refs: GameRef[] = [];
+  /** Todas as referências do mapa; `refs` exclui as ignoradas pelo usuário. */
+  private allRefs: GameRef[] = [];
   private fit: FitResult | null = null;
   private estimate: Estimate | null = null;
   private masks = new Map<string, Promise<LandMask>>();
@@ -59,6 +60,14 @@ export class CalibrationPanel {
   private readonly showPredicted = h("input", { type: "checkbox", checked: true });
   private readonly saveBtn = h("button", { type: "button", textContent: "Salvar" });
   private readonly estimateBtn = h("button", { type: "button", textContent: "Estimar automaticamente" });
+  private readonly ignoreBtn = h("button", {
+    type: "button",
+    className: "secondary",
+    textContent: "Ignorar esta referência",
+    title: "Use quando o pino não existe no mapa do jogo (outro andar, área não revelada, dado antigo)",
+    disabled: true,
+  });
+  private readonly ignoredBox = h("details", { className: "calib-ignored" });
 
   constructor(private readonly view: MapView) {
     this.refInput.setAttribute("list", this.refList.id);
@@ -68,6 +77,10 @@ export class CalibrationPanel {
     download.addEventListener("click", () => this.info && downloadMapData(this.info.name, this.serialize()));
     this.saveBtn.addEventListener("click", () => void this.save());
     this.estimateBtn.addEventListener("click", () => void this.runEstimate());
+    this.ignoreBtn.addEventListener("click", () => {
+      const ref = this.pendingGame()?.ref;
+      if (ref) this.setIgnored(ref.id, true);
+    });
     this.showPredicted.addEventListener("change", () => this.renderPredicted());
     for (const el of [this.refInput, this.gameX, this.gameY]) {
       el.addEventListener("input", () => {
@@ -82,6 +95,7 @@ export class CalibrationPanel {
       h("header", {}, h("h2", { textContent: "Calibração" }), close),
       h("div", { className: "calib-actions" }, this.estimateBtn),
       h("label", { className: "calib-field" }, "Referência", this.refInput, this.refList),
+      h("div", { className: "calib-actions" }, this.ignoreBtn),
       h("div", { className: "calib-manual" }, h("span", { textContent: "ou coordenada:" }), this.gameX, this.gameY),
       this.hint,
       h(
@@ -92,6 +106,7 @@ export class CalibrationPanel {
         this.table,
       ),
       this.stats,
+      this.ignoredBox,
       h("label", { className: "calib-check" }, this.showPredicted, "Mostrar onde as outras referências cairiam"),
       h("div", { className: "calib-actions" }, this.saveBtn, download),
       this.status,
@@ -135,22 +150,49 @@ export class CalibrationPanel {
     this.info = info;
     this.dirty = false;
     this.data = asMapDataV1(null);
-    this.refs = [];
+    this.allRefs = [];
     this.estimate = null;
     this.render();
     try {
       const [raw, refs] = await Promise.all([loadMapData(info.name), loadRefs(info.name)]);
       if (seq !== this.loadSeq) return;
       this.data = asMapDataV1(raw);
-      this.refs = refs;
+      this.allRefs = refs;
       this.setStatus(raw ? `Carregado data/maps/${info.name}.json` : "Sem calibração salva para este mapa.");
       if (this.open && !raw && refs.length >= 4) void this.runEstimate();
     } catch (e) {
       if (seq !== this.loadSeq) return;
       this.setStatus(`Não consegui ler os dados do mapa (${(e as Error).message}).`);
-      this.refs = await loadRefs(info.name);
+      this.allRefs = await loadRefs(info.name);
     }
     this.render();
+  }
+
+  private get ignored(): Set<string> {
+    const list = this.data.ignoredRefs;
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : []);
+  }
+
+  private get refs(): GameRef[] {
+    const ign = this.ignored;
+    return ign.size ? this.allRefs.filter((r) => !ign.has(r.id)) : this.allRefs;
+  }
+
+  /** Marca/desmarca uma referência como inexistente neste mapa (salvo em data/maps). */
+  private setIgnored(id: string, value: boolean): void {
+    const ign = this.ignored;
+    if (value) ign.add(id);
+    else ign.delete(id);
+    this.data.ignoredRefs = [...ign].sort();
+    if (value) {
+      // um ponto já colocado nessa referência deixa de fazer sentido
+      this.data.calibration = { ...this.data.calibration, points: this.points.filter((p) => p.refId !== id) };
+      this.refInput.value = "";
+    }
+    this.estimate = null; // a estimativa dependia do conjunto antigo
+    this.dirty = true;
+    this.render();
+    if (this.points.length === 0 && this.refs.length >= 4) void this.runEstimate();
   }
 
   private get points(): CalibrationPoint[] {
@@ -277,11 +319,24 @@ export class CalibrationPanel {
   private render(): void {
     this.fit = fitAffine(this.points);
     this.renderRefList();
+    this.renderIgnored();
     this.renderHint();
     this.renderTable();
     this.renderStats();
     this.renderMarkers();
     this.renderPredicted();
+  }
+
+  private renderIgnored(): void {
+    const ign = this.allRefs.filter((r) => this.ignored.has(r.id));
+    this.ignoredBox.hidden = ign.length === 0;
+    const summary = h("summary", { textContent: `${ign.length} referência(s) ignorada(s)` });
+    const items = ign.map((r) => {
+      const undo = h("button", { type: "button", className: "link", textContent: "restaurar" });
+      undo.addEventListener("click", () => this.setIgnored(r.id, false));
+      return h("li", {}, r.label, " ", undo);
+    });
+    this.ignoredBox.replaceChildren(summary, h("ul", {}, ...items));
   }
 
   private renderRefList(): void {
@@ -297,6 +352,7 @@ export class CalibrationPanel {
 
   private renderHint(): void {
     const pending = this.pendingGame();
+    this.ignoreBtn.disabled = !pending?.ref;
     const n = this.points.length;
     this.hint.textContent = pending
       ? `Agora clique no mapa onde fica ${pending.ref ? pending.ref.label : "esse ponto"} de verdade.`
@@ -309,7 +365,7 @@ export class CalibrationPanel {
 
   /** Rótulo vem das referências locais (não é salvo em data/maps, que vai pro repositório). */
   private pointLabel(p: CalibrationPoint): string {
-    const ref = p.refId ? this.refs.find((r) => r.id === p.refId) : undefined;
+    const ref = p.refId ? this.allRefs.find((r) => r.id === p.refId) : undefined;
     return ref?.label ?? p.label ?? `(${fmt(p.game[0])}, ${fmt(p.game[1])})`;
   }
 

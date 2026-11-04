@@ -25,6 +25,8 @@ export interface Calibration {
 export interface MapDataV1 extends MapData {
   version: 1;
   calibration?: Calibration;
+  /** Referências do WutheringData que não existem neste mapa no jogo (ids, ex.: "tp-315005"). */
+  ignoredRefs?: string[];
 }
 
 function isPoint(v: unknown): v is CalibrationPoint {
