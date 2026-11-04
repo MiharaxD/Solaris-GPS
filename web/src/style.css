@@ -645,3 +645,28 @@ body {
   overflow: auto;
   font-size: 11px;
 }
+
+/* ---- Fixture ---- */
+.fx-preview {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  border-radius: 4px;
+}
+
+.fx-pos {
+  stroke: #fff;
+  stroke-width: 2;
+  fill: #ff6b5e;
+  fill-opacity: 0.9;
+}
+
+.fx-panel textarea,
+.fx-panel select {
+  font: inherit;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--panel-fg);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+}

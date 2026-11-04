@@ -1,6 +1,7 @@
 {
   "tilesCache": "assets/tiles_cache",
   "mapDataDir": "data/maps",
+  "fixturesDir": "tracker/fixtures",
   "screen": {
     "width": 2560,
     "height": 1440,

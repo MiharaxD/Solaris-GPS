@@ -6,6 +6,7 @@ import { createMapPicker } from "./mapPicker";
 import { loadPref, savePref } from "./storage";
 import { downloadMapData, loadMapData, patchMapData, saveMapData } from "./mapData";
 import { CalibrationPanel } from "./calibration";
+import { FixturePanel } from "./fixturePanel";
 import { MarkerPanel } from "./markerPanel";
 import { ProgressStore } from "./progress";
 
@@ -28,15 +29,16 @@ async function start(): Promise<void> {
   if (!initial) return;
 
   const calibration = new CalibrationPanel(view);
+  const fixtures = new FixturePanel(view);
   const progress = await ProgressStore.open();
-  const markers = new MarkerPanel(view, () => calibration.isOpen, progress, async (map, patch) => {
+  const markers = new MarkerPanel(view, () => calibration.isOpen || fixtures.isOpen, progress, async (map, patch) => {
     const merged = await patchMapData(map, patch);
     calibration.mergeExternal(map, patch);
     markers.setMapData(map, merged);
   });
   markers.setMaps(maps);
   calibration.onData = (map, data) => markers.setMapData(map, data);
-  document.body.append(calibration.root, markers.root);
+  document.body.append(calibration.root, fixtures.root, markers.root);
   const toolbar = el<HTMLDivElement>("toolbar");
 
   let picker: HTMLSelectElement | null = null;
@@ -52,6 +54,7 @@ async function start(): Promise<void> {
     hud.textContent = "";
     void calibration.setMap(info);
     void markers.setMap(info);
+    fixtures.setMap(info);
   };
 
   picker = createMapPicker(toolbar, maps, initial.name, activate);
@@ -70,11 +73,31 @@ async function start(): Promise<void> {
   calibBtn.className = "tool-btn";
   calibBtn.textContent = "Calibrar";
   calibBtn.setAttribute("aria-pressed", "false");
-  calibBtn.addEventListener("click", () => {
-    calibration.toggle();
+  const fixtureBtn = document.createElement("button");
+  // Calibrar e Fixture usam o clique no mapa: só um aberto por vez.
+  const syncModes = () => {
     calibBtn.setAttribute("aria-pressed", String(calibration.isOpen));
+    fixtureBtn.setAttribute("aria-pressed", String(fixtures.isOpen));
+  };
+  calibBtn.addEventListener("click", () => {
+    if (!calibration.isOpen && fixtures.isOpen) fixtures.toggle(false);
+    calibration.toggle();
+    syncModes();
   });
   toolbar.append(calibBtn);
+  fixtureBtn.type = "button";
+  fixtureBtn.className = "tool-btn";
+  fixtureBtn.textContent = "Fixture";
+  fixtureBtn.title = "Anotar um print de tela cheia com a posição real (pra testar o tracker)";
+  fixtureBtn.setAttribute("aria-pressed", "false");
+  fixtureBtn.addEventListener("click", () => {
+    if (!fixtures.isOpen && calibration.isOpen) calibration.toggle(false);
+    fixtures.toggle();
+    syncModes();
+  });
+  toolbar.append(fixtureBtn);
+  // os ✕ dos painéis fecham sem passar pelos botões
+  for (const r of [calibration.root, fixtures.root]) new MutationObserver(syncModes).observe(r, { attributes: true, attributeFilter: ["hidden"] });
   activate(initial.name);
 
   // Coordenada em pixel do zoom máximo sob o cursor (base da calibração e dos fixtures).
@@ -89,6 +112,7 @@ async function start(): Promise<void> {
     calibration,
     markers,
     progress,
+    fixtures,
     mapData: { load: loadMapData, save: saveMapData, download: downloadMapData },
   };
 }
