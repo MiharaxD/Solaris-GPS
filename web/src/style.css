@@ -252,3 +252,9 @@ body {
 .calib-pred.nexus {
   fill: #c58bff;
 }
+
+.calib-pred.selected {
+  stroke: var(--accent);
+  stroke-width: 3;
+  fill: var(--accent);
+}

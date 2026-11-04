@@ -1,5 +1,6 @@
 import L from "leaflet";
-import { apply, fitAffine, type FitResult } from "./affine";
+import { anchorAt, apply, fitAffine, fitSimilarity, isMirrored, type Affine, type FitResult } from "./affine";
+import { buildLandMask, estimateCalibration, type Estimate, type LandMask } from "./autoCalib";
 import type { MapInfo } from "./maps";
 import type { MapView } from "./mapView";
 import {
@@ -38,6 +39,9 @@ export class CalibrationPanel {
   private data: MapDataV1 = asMapDataV1(null);
   private refs: GameRef[] = [];
   private fit: FitResult | null = null;
+  private estimate: Estimate | null = null;
+  private masks = new Map<string, Promise<LandMask>>();
+  private estimating = false;
   private dirty = false;
   private open = false;
   private loadSeq = 0;
@@ -54,6 +58,7 @@ export class CalibrationPanel {
   private readonly status = h("p", { className: "calib-status", role: "status" } as Partial<HTMLParagraphElement>);
   private readonly showPredicted = h("input", { type: "checkbox", checked: true });
   private readonly saveBtn = h("button", { type: "button", textContent: "Salvar" });
+  private readonly estimateBtn = h("button", { type: "button", textContent: "Estimar automaticamente" });
 
   constructor(private readonly view: MapView) {
     this.refInput.setAttribute("list", this.refList.id);
@@ -62,13 +67,20 @@ export class CalibrationPanel {
     const download = h("button", { type: "button", textContent: "Baixar JSON", className: "secondary" });
     download.addEventListener("click", () => this.info && downloadMapData(this.info.name, this.serialize()));
     this.saveBtn.addEventListener("click", () => void this.save());
+    this.estimateBtn.addEventListener("click", () => void this.runEstimate());
     this.showPredicted.addEventListener("change", () => this.renderPredicted());
-    for (const el of [this.refInput, this.gameX, this.gameY]) el.addEventListener("input", () => this.renderHint());
+    for (const el of [this.refInput, this.gameX, this.gameY]) {
+      el.addEventListener("input", () => {
+        this.renderHint();
+        this.renderPredicted();
+      });
+    }
 
     this.root = h(
       "aside",
       { className: "calib-panel", hidden: true },
       h("header", {}, h("h2", { textContent: "Calibração" }), close),
+      h("div", { className: "calib-actions" }, this.estimateBtn),
       h("label", { className: "calib-field" }, "Referência", this.refInput, this.refList),
       h("div", { className: "calib-manual" }, h("span", { textContent: "ou coordenada:" }), this.gameX, this.gameY),
       this.hint,
@@ -105,6 +117,7 @@ export class CalibrationPanel {
       this.pointsLayer.addTo(this.view.leaflet);
       this.predictedLayer.addTo(this.view.leaflet);
       this.render();
+      if (!this.estimate && this.points.length === 0 && this.refs.length >= 4) void this.runEstimate();
     } else {
       this.pointsLayer.remove();
       this.predictedLayer.remove();
@@ -123,6 +136,7 @@ export class CalibrationPanel {
     this.dirty = false;
     this.data = asMapDataV1(null);
     this.refs = [];
+    this.estimate = null;
     this.render();
     try {
       const [raw, refs] = await Promise.all([loadMapData(info.name), loadRefs(info.name)]);
@@ -130,6 +144,7 @@ export class CalibrationPanel {
       this.data = asMapDataV1(raw);
       this.refs = refs;
       this.setStatus(raw ? `Carregado data/maps/${info.name}.json` : "Sem calibração salva para este mapa.");
+      if (this.open && !raw && refs.length >= 4) void this.runEstimate();
     } catch (e) {
       if (seq !== this.loadSeq) return;
       this.setStatus(`Não consegui ler os dados do mapa (${(e as Error).message}).`);
@@ -189,6 +204,44 @@ export class CalibrationPanel {
     this.render();
   }
 
+/** Melhor transformação disponível: afim (3+), similaridade (2), estimativa ancorada (1) ou estimativa. */
+  private transform(): Affine | null {
+    const pts = this.points;
+    if (this.fit) return this.fit.affine;
+    if (pts.length === 2) return fitSimilarity(pts, this.estimate ? isMirrored(this.estimate.affine) : false);
+    if (pts.length === 1 && this.estimate) return anchorAt(this.estimate.affine, pts[0]!);
+    return this.estimate?.affine ?? null;
+  }
+
+  private async runEstimate(): Promise<void> {
+    const info = this.info;
+    if (!info || this.estimating || this.refs.length < 4) return;
+    this.estimating = true;
+    this.estimateBtn.disabled = true;
+    this.setStatus("Estimando a posição das referências (procura onde elas caem em terra)…");
+    try {
+      let mask = this.masks.get(info.name);
+      if (!mask) {
+        mask = buildLandMask(info);
+        this.masks.set(info.name, mask);
+      }
+      const m = await mask;
+      await new Promise((r) => setTimeout(r, 0)); // deixa a mensagem aparecer
+      const est = estimateCalibration(this.refs, m);
+      if (this.info?.name !== info.name) return;
+      this.estimate = est;
+      this.setStatus(
+        est
+          ? `Estimativa: ${est.onLand} de ${est.total} referências caem em terra. É aproximada — corrija 2 ou 3 bolinhas (veja a dica acima).`
+          : "Não consegui estimar. Use 3 pontos manuais.",
+      );
+    } finally {
+      this.estimating = false;
+      this.estimateBtn.disabled = false;
+      this.render();
+    }
+  }
+
   private serialize(): MapDataV1 {
     const cal = { ...this.data.calibration, points: this.points };
     if (this.fit) {
@@ -246,10 +299,12 @@ export class CalibrationPanel {
     const pending = this.pendingGame();
     const n = this.points.length;
     this.hint.textContent = pending
-      ? `Agora clique no mapa onde fica ${pending.ref ? pending.ref.label : "esse ponto"}.`
-      : n < 3
-        ? `Escolha uma referência e clique onde ela fica no mapa. Faltam ${3 - n} ponto(s) para a afim.`
-        : "Adicione mais pontos espalhados para reduzir o erro, ou arraste um ponto para ajustar.";
+      ? `Agora clique no mapa onde fica ${pending.ref ? pending.ref.label : "esse ponto"} de verdade.`
+      : this.transform() && n < 3
+        ? `Abra o mapa do jogo, ache um teleporte/Nexus que você reconhece, clique na bolinha dele aqui e depois no lugar certo. Faltam ${3 - n} correção(ões) para a afim completa.`
+        : n < 3
+          ? `Escolha uma referência e clique onde ela fica no mapa. Faltam ${3 - n} ponto(s) para a afim.`
+          : "Corrija mais bolinhas espalhadas para reduzir o erro, ou arraste um ponto numerado para ajustar.";
   }
 
   /** Rótulo vem das referências locais (não é salvo em data/maps, que vai pro repositório). */
@@ -310,14 +365,16 @@ export class CalibrationPanel {
 
   private renderPredicted(): void {
     this.predictedLayer.clearLayers();
-    if (!this.fit || !this.showPredicted.checked || !this.info) return;
+    const t = this.transform();
+    if (!t || !this.showPredicted.checked || !this.info) return;
     const used = new Set(this.points.map((p) => p.refId));
+    const selected = this.refInput.value.trim();
     for (const r of this.refs) {
       if (used.has(r.id)) continue;
-      const [x, y] = apply(this.fit.affine, [r.x, r.y]);
+      const [x, y] = apply(t, [r.x, r.y]);
       L.circleMarker(this.view.toLatLng({ x, y }), {
         radius: r.kind === "nexus" ? 6 : 4,
-        className: `calib-pred ${r.kind}`,
+        className: `calib-pred ${r.kind}${r.label === selected ? " selected" : ""}`,
         interactive: true,
       })
         .bindTooltip(r.label)
@@ -326,6 +383,7 @@ export class CalibrationPanel {
           L.DomEvent.stopPropagation(e);
           this.refInput.value = r.label;
           this.renderHint();
+          this.renderPredicted();
         })
         .addTo(this.predictedLayer);
     }

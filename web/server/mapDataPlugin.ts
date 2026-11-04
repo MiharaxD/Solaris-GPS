@@ -9,7 +9,7 @@
 import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
-import { MAX_BYTES, MapDataError, MapDataStore, knownMaps } from "./mapData";
+import { MAX_BYTES, MapDataError, MapDataStore, knownMaps } from "./mapData.ts";
 
 export const CLIENT_HEADER = "x-solaris-client";
 const ROUTE = /^\/api\/map-data\/([^/?#]+)$/;

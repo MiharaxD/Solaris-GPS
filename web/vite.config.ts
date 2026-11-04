@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
-import { mapDataPlugin } from "./server/mapDataPlugin";
+import { mapDataPlugin } from "./server/mapDataPlugin.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(readFileSync(path.join(repoRoot, "config.json"), "utf8")) as { mapDataDir?: string };

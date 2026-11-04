@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CLIENT_HEADER, createMapDataHandler } from "./mapDataPlugin";
+import { CLIENT_HEADER, createMapDataHandler } from "./mapDataPlugin.ts";
 
 let root: string;
 let server: Server;
