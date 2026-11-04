@@ -4,6 +4,8 @@
   --panel-bg: rgba(8, 20, 30, 0.85);
   --panel-fg: #dfe8ee;
   --accent: #f5c542;
+  --status-on: #3ecf8e;
+  --status-off: #8a96a0;
   color-scheme: dark;
 }
 
@@ -45,6 +47,32 @@ body {
 .map-picker:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+.tracker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--panel-bg);
+  white-space: nowrap;
+}
+
+.tracker-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-off);
+}
+
+.tracker-badge[data-status="connected"]::before {
+  background: var(--status-on);
+}
+
+.tracker-badge[data-status="connecting"]::before {
+  background: var(--accent);
 }
 
 .hud {
