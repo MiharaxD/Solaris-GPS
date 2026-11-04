@@ -94,12 +94,16 @@ def main(argv: list[str] | None = None) -> int:
     for name, refs in sorted(per_map.items()):
         # rótulo legível e único: "Teleporte · Jinzhou › Central Plains #2"
         refs.sort(key=lambda r: (r["kind"], r["area"], r["x"], r["y"]))
+        # "#n" só quando a área tem mais de um do mesmo tipo: rótulo sem número = inequívoco.
+        total = Counter((r["kind"], tuple(r["area"])) for r in refs)
         seen = Counter[tuple[str, tuple[str, ...]]]()
         for r in refs:
             key = (r["kind"], tuple(r["area"]))
             seen[key] += 1
             where = " › ".join(r["area"][-2:]) or "?"
-            r["label"] = f"{KIND_LABEL[r['kind']]} · {where} #{seen[key]}"
+            suffix = f" #{seen[key]}" if total[key] > 1 else ""
+            r["label"] = f"{KIND_LABEL[r['kind']]} · {where}{suffix}"
+            r["unique"] = total[key] == 1
         out = {"map": name, "source": "WutheringData", "refs": refs}
         (args.out / f"{name}.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
         kinds = Counter(r["kind"] for r in refs)
