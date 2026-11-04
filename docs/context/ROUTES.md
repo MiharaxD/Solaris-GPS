@@ -53,7 +53,11 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Progresso (ticket 12):** `web/src/progress.ts` (`ProgressStore` no IndexedDB, backup
   `parseBackup`/`makeBackup`, `tallyMarkers`; testes em `progress.test.ts`). O painel de
   marcadores mostra e alterna. Cuidado: os ids dos marcadores são a chave do progresso.
-- Tickets 13–15 seguem daqui. No console do web, `window.solaris` expõe `view`,
+- **Marcadores manuais (ticket 13):** formulário e modos de clique em `markerPanel.ts`
+  (`openForm`, `saveManual`, `setMode`); `manualMarkersOf`/`patchMapData` em `mapData.ts`;
+  pessoais em `ProgressStore` (`putPersonal`/`deletePersonal`). `MAP_FILE_CATS` (markers.ts)
+  decide o que vai pro arquivo do mapa.
+- Tickets 14–15 seguem daqui. No console do web, `window.solaris` expõe `view`,
   `calibration`, `markers`, `progress` e `mapData` pra depuração.
 
 ## Dados do mapa (`data/maps/<name>.json`) e API local

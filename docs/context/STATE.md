@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09, 11 e 12 feitos.
+**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09 e 11–13 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -24,6 +24,9 @@
   contagem x/y por categoria, por mapa e de todos os mapas, "Esconder encontrados" e
   Backup/Restaurar em JSON. Os ids (`e<EntityId>`, `tp-<Id>`) precisam ficar estáveis entre
   regenerações dos marcadores, senão o progresso se perde.
+- Marcadores manuais (ticket 13): teleporte/Nexus em `data/maps` (`manualMarkers`, px), os
+  outros no IndexedDB e no backup. Nos 3 mapas sem dados (honami, dimmr, mengzhou), os
+  teleportes do tracker vão ter de ser cadastrados assim.
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
@@ -58,7 +61,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 13 (editor de marcadores manuais); depois 14 (importador th.gl) e 15. O ticket 10 (afim por área) fica
+- Ticket 14 (importador do backup do th.gl); depois 15 e o checkpoint 🛑 16. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
@@ -68,7 +71,7 @@
   no chat, mas só como imagem anexada). Escala observada no minimapa a 1440p: Nexus ~34 px,
   teleporte ~14×34 px. Falta também o sprite da seta.
 - Prints de tela cheia pros fixtures (Fase 2) e a escala de UI. Resolução: 2560×1440.
-- Pontos de calibração (Fase 1). Teleportes à mão só nos 3 mapas sem dados.
+- Teleportes à mão nos 3 mapas sem dados (pelo "+ Novo marcador").
 
 ## Limitações conhecidas
 - O minimapa tem um cone de visão claro que gira com a câmera. Ele precisa de máscara ou
