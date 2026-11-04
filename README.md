@@ -1,31 +1,32 @@
 # Solaris GPS
 
 Mapa interativo com marcadores e progresso para **Wuthering Waves**, com um tracker que
-mostra sua posição em tempo real lendo o **minimapa** da tela. É um projeto pessoal e não
-comercial, feito pra Windows 10/11.
+mostra sua posição em tempo real lendo o **minimapa** a partir da tela compartilhada no
+navegador. É um projeto pessoal e não comercial, feito pra Windows 10/11 com Chrome ou Edge.
 
-> **Segurança da conta.** O tracker só *captura a tela*, como um software de gravação.
-> Ele nunca lê nem escreve na memória do jogo, não injeta nada, não hooka APIs e não envia
-> teclado nem mouse pro jogo. Nada sai do seu PC: não tem telemetria nem servidor externo,
-> e o app não baixa nada em runtime.
+> **Segurança da conta.** O tracker só *vê a janela que você compartilhar* pelo navegador,
+> como uma chamada de vídeo. Ele nunca lê nem escreve na memória do jogo, não injeta nada,
+> não hooka APIs e não envia teclado nem mouse pro jogo. Nada sai do seu PC: não tem
+> telemetria nem servidor externo, e o app não baixa nada em runtime.
 
 ## Estado
 
-Em desenvolvimento. Hoje o mapa web mostra os mapas a partir das tiles locais. O tracker,
-os marcadores e o progresso ainda estão por vir (veja `docs/context/STATE.md`).
+Em desenvolvimento. Hoje o mapa web mostra os 10 mapas a partir das tiles locais. O
+tracker (compartilhar tela), os marcadores e o progresso ainda estão por vir (veja
+`docs/context/STATE.md`).
 
 ## Requisitos
 
-- Windows 10/11
-- Python 3.11 (`py -3.11`)
+- Windows 10/11 com Chrome ou Edge
 - Node.js 20 ou mais novo
+- Python 3.11 (`py -3.11`), só pras ferramentas de tiles e dados
 - As tiles dos mapas em `assets/tiles_cache/` (não vêm com o repositório, veja abaixo)
 
 ## Setup
 
 ```bash
 py -3.11 -m venv .venv
-.venv/Scripts/python -m pip install pillow numpy
+.venv/Scripts/python -m pip install -r tools/requirements.txt
 npm --prefix web install
 ```
 
@@ -64,32 +65,19 @@ npm --prefix web run dev
 
 Abra http://127.0.0.1:5173. O servidor só escuta em localhost.
 
-## Rodar o tracker
+Testes do web:
 
 ```bash
-.venv/Scripts/python -m pip install -r tracker/requirements.txt
-```
-
-```bash
-.venv/Scripts/python -m tracker
-```
-
-Ele sobe um WebSocket em `ws://127.0.0.1:8765` e só aceita conexões do mapa web (as origens
-ficam em `config.json`). Por enquanto, ele recebe o mapa ativo e grava os dados de calibração
-em `data/maps/`. A captura do minimapa vem nas próximas fases. O mapa web funciona com o
-tracker desligado.
-
-Testes:
-
-```bash
-.venv/Scripts/python -m pytest
+npm --prefix web test
 ```
 
 ## Configuração
 
-`config.json` (na raiz): caminho do cache de tiles, pasta `data/maps`, porta e origens do
-WebSocket, resolução da tela, posição e formato do minimapa, hotkeys e escala
-minimapa→mapa calibrada por mapa.
+`config.json` (na raiz) guarda os padrões: o caminho do cache de tiles, a pasta
+`data/maps`, a resolução da tela e a posição e o formato do minimapa. Os ajustes que você fizer
+no app (recorte do minimapa, preferências) ficam salvos no navegador. Os dados de cada mapa
+(calibração, escala minimapa→mapa, teleportes cadastrados) ficam em `data/maps/<mapa>.json`,
+gravados pelo próprio servidor local do Vite.
 
 ## Créditos e direitos
 

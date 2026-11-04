@@ -1,66 +1,67 @@
 # Decisões ativas
 
-- **Assets ficam em `assets/` e scripts de ferramenta em `tools/`.**
-  Por quê: a raiz fica livre pra `web/`, `tracker/` e `overlay/`, e o `.gitignore` da spec
-  vale como está.
-  Exige: todo código lê o caminho do cache pelo `config.json`. O downloader precisa de
-  `--cache`/`--out` explícitos.
+- **O tracker roda dentro do site** (decisão do usuário, no modelo do Teyvat GPS). Ele
+  captura a janela do jogo (ou a tela inteira, em tela cheia sem bordas) com
+  `getDisplayMedia` e processa num Web Worker. Não existe processo Python em runtime.
+  Por quê: um app só, sem terminal, e o navegador só enxerga a janela escolhida.
+  Exige: os algoritmos são escritos em TypeScript. O mesmo código roda no Worker e no runner
+  de fixtures (Node/Vitest). Libs pesadas (ex.: OpenCV.js/WASM) só se os números
+  justificarem, sempre empacotadas localmente e carregadas sob demanda ao compartilhar a
+  tela. A frequência real é medida, não prometida (o plano antigo era 10 Hz nativo).
+  Hotkeys globais só por extensão opcional do Chrome. O overlay vira pop-out por Document
+  Picture-in-Picture (sempre no topo, mas não transparente nem click-through).
+
+- **Assets ficam em `assets/` e scripts de ferramenta em `tools/`.** O caminho do cache e o
+  de `data/maps` vêm do `config.json`. O downloader precisa de `--cache`/`--out` explícitos.
 
 - **O manifest que faltar é gerado a partir do disco pelo `build_tiles`, nunca rodando o
-  downloader.**
-  Por quê: regra de não rodar o `wuwa_maps.py` sem pedido, e o resultado é o mesmo.
-  Exige: o mesmo formato do `write_manifest` do downloader, com `first_number_is_row: true`.
+  downloader.** Mesmo formato do `write_manifest`, com `first_number_is_row: true`.
 
 - **Os dados ficam divididos por tipo.** O que se sabe do mapa (pontos de calibração e afins
-  por área, teleportes e Nexus cadastrados, escala minimapa→mapa) fica em
+  por área, teleportes e Nexus cadastrados à mão, escala minimapa→mapa) fica em
   `data/maps/<name>.json`, versionado. O progresso do usuário (encontrados, marcadores
-  pessoais, filtros) fica no IndexedDB, com Backup/Restore.
-  Por quê: o tracker precisa desses dados sem o web aberto (testes da Fase 2), e o git
-  protege a calibração.
-  Exige: o web grava esses arquivos pela mensagem `save_map_data` no WebSocket (o tracker
-  escreve o arquivo), com download do JSON como alternativa se o tracker estiver offline. O
-  web não tem backend próprio.
+  pessoais, filtros) e as preferências de captura ficam no navegador (IndexedDB/
+  localStorage), com Backup/Restore.
+  Por quê: o runner de fixtures precisa desses dados fora do navegador, e o git protege a
+  calibração.
+  Exige: o web grava pela API do servidor do Vite (`/api/map-data/<name>`, só em
+  localhost), com download do JSON como alternativa.
 
-- **O tracker publica `x, y` em pixel do zoom máximo do mapa ativo.**
-  Por quê: é o espaço onde ele faz o matching.
-  Exige: a conversão pra coordenada de jogo acontece no web. O tracker não aplica afim em
-  runtime: as referências dele (teleportes e Nexus) chegam já em pixel (ver a próxima
-  decisão).
+- **O tracker trabalha em pixel do zoom máximo do mapa ativo.** A conversão pra coordenada
+  de jogo usa a calibração afim. As referências (teleportes e Nexus) são convertidas pra
+  pixel uma vez, ao carregar o mapa.
 
 - **As referências do tracker são os teleportes e Nexus do WutheringData** (Teleporter Type
-  2 = Beacon e Type 1 = Nexus, com a posição de `LevelEntityConfig_0/_1`), convertidos pra
-  pixel pela calibração do mapa num arquivo gerado localmente e ignorado pelo git. Nos mapas
-  sem dados (honami-city, dimmr-plains, simulacrum-nexus-mengzhou), elas vêm do cadastro
-  manual em `data/maps/`.
+  2 = Beacon e Type 1 = Nexus, com a posição de `LevelEntityConfig_0/_1`), gerados
+  localmente num arquivo ignorado pelo git, mais os cadastros manuais de `data/maps/` nos
+  mapas sem dados (honami-city, dimmr-plains, simulacrum-nexus-mengzhou).
   Por quê: os dados cobrem 7 dos 10 mapas, e os dados do vendor não podem ser commitados.
-  Exige: regerar esse arquivo sempre que a calibração do mapa mudar.
 
 - **A máscara do matching por imagem usa a cor de fundo, não alpha.** As tiles são RGB, com
   o fundo azul pintado (~RGB(4,36,52) e variações por mapa) e padding preto puro. Tile
   "lisa" (desvio padrão < 2, cor do fundo) = vazio: são 81% do Overworld, e há buracos
   assim até no meio da terra (ex.: z6 linha 28, colunas 20–21), um defeito dos dados do
   th.gl.
-  Por quê: confirmado na Fase 0. O prompt supunha que as tiles tinham alpha.
-  Exige: o matching ignora regiões com a cor de fundo. O build copia as tiles lisas mesmo
-  assim (são baratas e evitam 404 no Leaflet).
+  Exige: o matching ignora a cor de fundo. O build copia as tiles lisas mesmo assim (são
+  baratas e evitam 404 no Leaflet).
 
 - **No build do web, o zoom nativo é preferido ao gerado** (ex.: z5 do Overworld), e as
-  posições sem filha são preenchidas com preto, igual ao padding nativo. O zoom mínimo é o
-  primeiro em que a grade cabe em 2×2 tiles.
+  posições sem filha são preenchidas com preto (ou transparente, se a origem for RGBA). O
+  zoom mínimo é o primeiro em que a grade cabe em 2×2 tiles.
 
-- **O venv do tracker usa Python 3.11 (`py -3.11`).**
-  Por quê: o 3.15 é novo demais pras versões compiladas do OpenCV e do mss, e o 3.12 do uv
-  não está registrado no `py`.
+- **Python 3.11 em `.venv` só pras ferramentas** (`tools/requirements.txt`). O 3.15 é novo
+  demais pras libs, e o 3.12 do uv não está registrado no `py`.
 
-- **O WutheringData é clonado em `vendor/` (ignorado pelo git), e os marcadores derivados
-  dele são gerados localmente e nunca commitados.**
-  Por quê: os dados são © Kuro Games. Só o crédito vai no README.
-  Exige: o que o usuário cadastra à mão em `data/maps/` vai pro repositório; o que é gerado
-  a partir do vendor, não.
+- **O WutheringData é clonado em `vendor/` (ignorado pelo git), e o que for derivado dele
+  nunca é commitado.** Só o crédito vai no README. O que o usuário cadastra à mão em
+  `data/maps/` vai pro repositório.
 
-- **Fixtures são anotados clicando no mapa web** (ticket 15), gravando o mapa e `x, y` em
-  pixel.
-  Por quê: o WuWa não mostra coordenada na tela.
+- **Fixtures são anotados clicando no mapa web** (ticket 15), a partir de um print ou do
+  frame atual da tela compartilhada. Por quê: o WuWa não mostra coordenada na tela.
 
-- **O mapa ativo é escolhido à mão no web** (com hotkey opcional). Detecção automática de
-  mapa fica fora até o usuário pedir.
+- **O mapa ativo é escolhido à mão no web.** Detecção automática de mapa fica fora até o
+  usuário pedir. A recuperação manual é o "Find me": clicar onde está pra recomeçar o
+  rastreio.
+
+- **Não copiar código nem dados de outros sites de mapa** (Teyvat GPS, th.gl, appsample).
+  Pode-se usar a descrição pública de como eles funcionam como referência de produto.

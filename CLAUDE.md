@@ -4,20 +4,21 @@ Mapa web com marcadores e progresso (estilo "Teyvat GPS") e um tracker que lê o
 da tela pra mostrar a posição ao vivo. Uso pessoal, Windows 10/11.
 Spec completa e fases: `PROMPT_wuwa_tracker.md`. Plano em tickets: `.scratch/wuwa-tracker/issues/`.
 
-Stack planejada: tracker em Python 3.11 (venv, mss, OpenCV, WebSocket); web em Vite +
-TypeScript strict + Leaflet (CRS.Simple); overlay em Tauri (só na Fase 4, precisa de Rust,
-que ainda não está instalado). Node 24 instalado.
-Python: use `py -3.11`. O padrão da máquina é o 3.15, novo demais pras libs. `py -3.12`
-não funciona: o 3.12 que existe foi instalado pelo uv e não está registrado no `py`.
+Stack: tudo roda no navegador (Chrome/Edge). Web em Vite + TypeScript strict + Leaflet
+(CRS.Simple). O tracker também roda no site: captura a janela do jogo com `getDisplayMedia`
+e processa num Web Worker, no modelo do Teyvat GPS. O pop-out "sempre no topo" (Document
+Picture-in-Picture) substitui o overlay Tauri. Python 3.11 só nas ferramentas de build e
+dados (`tools/`). Node 24.
+Python: use `.venv/Scripts/python`. O padrão da máquina é o 3.15, novo demais pras libs, e
+o `py -3.12` não funciona (o 3.12 foi instalado pelo uv e não está registrado no `py`).
 
 ## Comandos
 - Python do projeto: `.venv/Scripts/python` (3.11). Pra recriar: `py -3.11 -m venv .venv`.
 - Inventário dos mapas: `.venv/Scripts/python tools/build_tiles.py inventory`.
-- Dependências Python: `.venv/Scripts/python -m pip install -r tracker/requirements.txt`.
-- Web: `npm --prefix web install`, `npm --prefix web run dev` (http://127.0.0.1:5173) e
-  `npm --prefix web run typecheck`.
+- Dependências Python: `.venv/Scripts/python -m pip install -r tools/requirements.txt`.
+- Web: `npm --prefix web install`, `npm --prefix web run dev` (http://127.0.0.1:5173),
+  `npm --prefix web run typecheck` e `npm --prefix web test` (Vitest).
 - Tiles do web: `.venv/Scripts/python tools/build_tiles.py build`.
-- Tracker: `.venv/Scripts/python -m tracker`. Testes: `.venv/Scripts/python -m pytest`.
 
 **Só com pedido explícito do usuário:**
 - `python tools/wuwa_maps.py --cache assets/tiles_cache --out assets/mapas ...` baixa do CDN
@@ -25,10 +26,12 @@ não funciona: o 3.12 que existe foi instalado pelo uv e não está registrado n
   pastas antigas e criariam um cache vazio novo.
 
 ## Invariantes (inegociáveis)
-- O tracker só CAPTURA A TELA. Nunca ler/escrever memória do jogo, injetar DLL, hookar API,
-  enviar input de teclado/mouse ou automatizar nada. Hotkeys só ESCUTAM o teclado.
-- Nada sai do PC: sem telemetria, sem servidor externo. O WebSocket só escuta em localhost.
-- Em runtime, nada é baixado: tiles e dados vêm só do disco.
+- O tracker só CAPTURA A TELA (`getDisplayMedia`, a janela que o usuário escolher). Nunca
+  ler/escrever memória do jogo, injetar DLL, hookar API, enviar input de teclado/mouse ou
+  automatizar nada. Atalhos (extensão opcional) só ESCUTAM o teclado.
+- Nada sai do PC: sem telemetria, sem servidor externo, sem CDN. O servidor do Vite só
+  escuta em 127.0.0.1, e a API `/api/map-data` checa Host, Origin e um header próprio.
+- Em runtime, nada é baixado: tiles, dados e libs (ex.: WASM) vêm do disco ou do bundle.
 - Não editar nem rodar `tools/wuwa_maps.py` sem pedido.
 - Nomes das tiles: `<z>/<y>_<x>.webp`, PRIMEIRO número = LINHA. Arquivo de 0 bytes = tile que
   não existe; nunca abrir como imagem.
@@ -42,7 +45,8 @@ não funciona: o 3.12 que existe foi instalado pelo uv e não está registrado n
 ## Estilo
 - Conversa, comentários, commits e UI em português. Identificadores em inglês.
 - TypeScript strict; type hints em todo o Python.
-- Commits pequenos, um por funcionalidade (`feat:`, `fix:`, `chore:`). Nunca push sem pedido.
+- Commits pequenos, um por funcionalidade (`feat:`, `fix:`, `chore:`). Push pra `origin/main`
+  (repo PÚBLICO, autorizado pelo usuário) ao fechar cada ticket. Nunca subir assets do jogo.
 
 ## Protocolo de consulta (antes de qualquer tarefa)
 1. Leia `docs/context/ROUTES.md` e vá direto aos caminhos do tipo de tarefa.

@@ -1,6 +1,6 @@
 # Rotas por tipo de tarefa
 
-Hoje existem a spec, as ferramentas de tiles, os assets e os tickets. As pastas marcadas
+Hoje existem a spec, as ferramentas de tiles, o mapa web, a API local de dados e os tickets. As pastas marcadas
 *(planejado)* ainda não existem: crie no lugar indicado e tire a marca quando passarem a
 existir. Python: sempre `.venv/Scripts/python` (3.11).
 
@@ -15,9 +15,8 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 ## Tiles, manifests e mapas
 - **Ir direto para:** `assets/tiles_cache/<map_id>/manifest.json` (fonte de verdade de cada
   mapa) e `assets/tiles_cache/<map_id>/<z>/<y>_<x>.webp`.
-- **Build de tiles:** `tools/build_tiles.py`, com os subcomandos `inventory`, `manifest` e
-  `pyramid`. O comando de build pro web (ticket 05) entra nele, com saída em
-  `web/public/tiles/` e `web/public/maps.json` (ignorados pelo git).
+- **Build de tiles:** `tools/build_tiles.py` (`inventory`, `manifest`, `pyramid`, `build` e
+  `slice`). O `build` grava `web/public/tiles/` e `web/public/maps.json` (ignorados pelo git).
 - **Testar:** `.venv/Scripts/python tools/build_tiles.py inventory` (sai com 1 se algum
   manifest divergir do disco).
 - **Cuidados:** as tiles são RGB, sem alpha. O fundo azul vem pintado e há padding preto
@@ -37,29 +36,30 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `web/src/main.ts` (bootstrap, troca de mapa, HUD), `web/src/mapPicker.ts` (dropdown),
   `web/src/storage.ts` (prefs no localStorage) e `web/src/style.css` (tokens em `:root`).
 - **Rodar e validar:** `npm --prefix web run dev` (http://127.0.0.1:5173, ou `preview_start
-  web` pelo `.claude/launch.json`) e `npm --prefix web run typecheck`.
+  web` pelo `.claude/launch.json`), `npm --prefix web run typecheck` (tsconfig.json pro
+  browser e tsconfig.node.json pro vite.config e `web/server/`) e `npm --prefix web test`.
 - **Cuidados:** o template de tile é `/tiles/<name>/{z}/{y}_{x}.webp` (y = linha). Os
   `bounds` do tile layer evitam 404 fora da grade. Leaflet 1.9 e TypeScript 7 em strict.
 - **Não precisa ler:** `web/public/tiles/`, `web/public/maps.json` (gerados) e `web/dist/`.
-- Tickets 06–15 seguem daqui.
-- Dados do mapa (calibração, teleportes, Nexus, escala) vêm de `data/maps/<name>.json`
-  *(planejado)*. Progresso do usuário fica no IndexedDB.
+- Tickets 09–15 seguem daqui. No console do web, `window.solaris` expõe `view` e `mapData`
+  pra depuração.
 
-## Tracker (Python 3.11) e canal web↔tracker
-- **Ir direto para:** `tracker/server.py` (WebSocket, origem checada, mapa ativo),
-  `tracker/protocol.py` (mensagens; espelho em `web/src/protocol.ts`, mude os dois juntos),
-  `tracker/map_data.py` (`data/maps/<name>.json`, escrita atômica, nome validado),
-  `tracker/config.py` (lê o `config.json` da raiz) e `web/src/tracker.ts` (cliente com
-  reconexão, `saveMapData`/`getMapData`).
-- **Rodar:** `.venv/Scripts/python -m tracker` (ws://127.0.0.1:8765).
-- **Testar:** `.venv/Scripts/python -m pytest` (`tracker/tests/`).
-- **Cuidados:** só localhost e `allowedOrigins` do `config.json`. O web precisa funcionar com
-  o tracker desligado (requests rejeitam e a UI oferece alternativa). No console do web,
-  `window.solaris` expõe `tracker` e `view` pra depuração.
-- `config.json`: caminhos, WebSocket, tela (2560×1440), minimapa, hotkeys e `minimapScale`
-  por mapa (seções sem uso ainda ficam em `Config.raw`).
+## Dados do mapa (`data/maps/<name>.json`) e API local
+- **Ir direto para:** `web/server/mapData.ts` (validação de nome contra o `maps.json` e
+  escrita atômica), `web/server/mapDataPlugin.ts` (GET/PUT `/api/map-data/<name>`, checando
+  Host, Origin e o header `X-Solaris-Client`) e `web/src/mapData.ts` (cliente e fallback de
+  download).
+- **Testar:** `npm --prefix web test` (`web/server/mapDataPlugin.test.ts`).
+- **Cuidados:** a API só existe no `vite dev`. O CORS fica desligado no `vite.config.ts`. A
+  pasta vem de `mapDataDir` no `config.json`.
+
+## Tracker no navegador *(planejado, Fases 2–3: tickets 17–28)*
+- Código em `web/src/tracker/` *(planejado)*: Worker de captura e processamento, com o mesmo
+  pipeline usado pelo runner de fixtures em Node/Vitest.
 - Sprites em `tracker/icons/` e prints em `tracker/fixtures/` e `tracker/samples/` são do
-  usuário (ignorados pelo git). Fases 2–3: tickets 17–28.
+  usuário (ignorados pelo git). Escala no minimapa a 1440p: Nexus ~34 px, teleporte ~14×34 px.
+- `config.json`: só os padrões (cache, `data/maps`, tela 2560×1440, minimapa). Os ajustes
+  do usuário ficam no navegador.
 
 ## Dados de entidades (WutheringData)
 - **Ir direto para:** `vendor/WutheringData/ConfigDB/`. Clone parcial: pra incluir um
@@ -76,8 +76,8 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   leia direto.
 - A saída gerada no ticket 11 não é commitada (adicionar a pasta ao `.gitignore`).
 
-## Overlay *(planejado, `overlay/`, Fase 4)*
-- Ticket 30. Precisa de Rust/Tauri.
+## Pop-out *(planejado, Fase 4)*
+- Ticket 30: Document Picture-in-Picture (Chrome/Edge). Sem Tauri e sem Rust.
 
 ## Mini-mapa de arquivos
 | Arquivo | Papel |
@@ -85,6 +85,9 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 | `PROMPT_wuwa_tracker.md` | Spec original: regras, fatos do minimapa, fases |
 | `.scratch/wuwa-tracker/issues/NN-*.md` | Tickets com bloqueadores e critérios |
 | `tools/wuwa_maps.py` | Downloader e costurador do CDN do th.gl (não mexer) |
-| `tools/build_tiles.py` | Inventário, geração de manifest e teste da pirâmide |
+| `tools/build_tiles.py` | Inventário, manifest, pirâmide, build do web e slice |
+| `web/src/mapView.ts` | Leaflet e conversão pixel↔latlng |
+| `web/server/mapDataPlugin.ts` | API local `/api/map-data` |
+| `config.json` | Padrões: caminhos, tela, minimapa |
 | `assets/tiles_cache/*/manifest.json` | Metadados de cada mapa (zooms, limites) |
 | `.gitignore` | Garante que assets e dados de terceiros fiquem fora |

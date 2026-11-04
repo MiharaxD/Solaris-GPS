@@ -6,13 +6,13 @@
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
   `web/public/tiles` z1..zmax e `maps.json` pros 10 mapas; incremental) e `slice` (imagem única →
   tiles + manifest; preserva alpha).
-- Canal web↔tracker: `python -m tracker` sobe o WebSocket local; o web mostra o status, envia o
-  mapa ativo e grava/lê `data/maps/<name>.json` via tracker. 12 testes em `tracker/tests/`.
+- API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
+  Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
   sob o cursor. README com setup e créditos.
 - Manifest do Overworld gerado a partir do disco (`overworld`, z5 e z6).
 - Repositório na branch `main`, remote `origin` = github.com/MiharaxD/Solaris-GPS (**público**).
-- `.venv` com Python 3.11 e `tracker/requirements.txt` (Pillow, numpy, websockets, pytest).
+- `.venv` com Python 3.11 e `tools/requirements.txt` (Pillow, numpy), só pras ferramentas.
 - WutheringData em `vendor/WutheringData` (clone parcial com sparse checkout, só os
   arquivos usados).
 
@@ -40,7 +40,8 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 09 (calibração afim por mapa); depois 10, 11, 13 e 15.
+- Ticket 09 (calibração afim por mapa); depois 10, 11, 13 e 15. Tickets 08, 15 e 17–30 foram
+  reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
 
 ## Depende do usuário
 - Salvar como arquivo em `tracker/icons/` os sprites recortados do minimapa (o usuário mandou
@@ -48,9 +49,10 @@
   teleporte ~14×34 px. Falta também o sprite da seta.
 - Prints de tela cheia pros fixtures (Fase 2) e a escala de UI. Resolução: 2560×1440.
 - Pontos de calibração (Fase 1). Teleportes à mão só nos 3 mapas sem dados.
-- Instalar o Rust antes da Fase 4.
 
 ## Limitações conhecidas
 - O minimapa tem um cone de visão claro que gira com a câmera. Ele precisa de máscara ou
   tratamento no matching (não verificado o quanto atrapalha).
+- No navegador, a frequência do rastreio e o comportamento com a aba em segundo plano ainda
+  não foram medidos. O Genshin muda o zoom do minimapa em cidades; não verificado no WuWa.
 - Os dados de entidades podem não bater com a versão atual do jogo (dump de março de 2026).
