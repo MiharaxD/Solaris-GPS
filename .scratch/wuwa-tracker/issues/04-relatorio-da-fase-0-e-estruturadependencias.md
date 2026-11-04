@@ -6,7 +6,7 @@
 
 **Status:** hitl
 
-- [ ] Relatório com inventário, veredito da pirâmide e achados do WutheringData
-- [ ] Estrutura de pastas e lista de dependências propostas
-- [ ] Perguntas em aberto listadas
-- [ ] Aprovação explícita do usuário registrada
+- [x] Relatório com inventário, veredito da pirâmide e achados do WutheringData
+- [x] Estrutura de pastas e lista de dependências propostas
+- [x] Perguntas em aberto listadas
+- [x] Aprovação explícita do usuário registrada

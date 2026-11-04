@@ -31,8 +31,16 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Cuidados:** não editar nem rodar sem pedido. Os padrões `--cache tiles_cache` e
   `--out mapas` estão desatualizados (agora ficam em `assets/`).
 
-## Mapa web (Vite + TS + Leaflet) *(planejado, `web/`)*
-- Tickets 05–15. Conversão pixel↔latlng: `unproject/project` no `maxZoom`.
+## Mapa web (Vite + TS + Leaflet)
+- **Ir direto para:** `web/src/mapView.ts` (Leaflet CRS.Simple, troca de mapa e conversão
+  pixel↔latlng no `maxZoom`), `web/src/maps.ts` (tipos e leitura do `maps.json`),
+  `web/src/main.ts` (bootstrap e HUD) e `web/src/style.css` (tokens de cor em `:root`).
+- **Rodar e validar:** `npm --prefix web run dev` (http://127.0.0.1:5173, ou `preview_start
+  web` pelo `.claude/launch.json`) e `npm --prefix web run typecheck`.
+- **Cuidados:** o template de tile é `/tiles/<name>/{z}/{y}_{x}.webp` (y = linha). Os
+  `bounds` do tile layer evitam 404 fora da grade. Leaflet 1.9 e TypeScript 7 em strict.
+- **Não precisa ler:** `web/public/tiles/`, `web/public/maps.json` (gerados) e `web/dist/`.
+- Tickets 06–15 seguem daqui.
 - Dados do mapa (calibração, teleportes, Nexus, escala) vêm de `data/maps/<name>.json`
   *(planejado)*. Progresso do usuário fica no IndexedDB.
 

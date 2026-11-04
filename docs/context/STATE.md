@@ -1,9 +1,12 @@
 # Estado atual
 
-**Fase:** Fase 0 concluída (tickets 01–03). Ticket 04 🛑 esperando aprovação do usuário.
+**Fase:** Fase 1 em andamento. Fase 0 aprovada. Ticket 05 feito (mapa web mostra o Overworld).
 
 ## Pronto
-- `tools/build_tiles.py`: `inventory [--alpha]`, `manifest <map_id> --name`, `pyramid <map_id> --lo N`.
+- `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
+  `web/public/tiles` z1..zmax e `maps.json` pros 10 mapas; incremental).
+- `web/`: Vite + TS + Leaflet mostrando o primeiro mapa do índice (Overworld), com HUD de pixel
+  sob o cursor. README com setup e créditos.
 - Manifest do Overworld gerado a partir do disco (`overworld`, z5 e z6).
 - Repositório na branch `main`, remote `origin` = github.com/MiharaxD/Solaris-GPS (**público**).
 - `.venv` com Python 3.11, Pillow e numpy (`.venv/Scripts/python`).
@@ -15,7 +18,8 @@
   vazias). Os arquivos de 0 bytes ficam só na borda testada pelo downloader.
 - **As tiles são RGB, sem canal alpha.** O fundo azul-escuro (~RGB(4,36,52); o
   `tethys-deep` usa ~(16,40,56)) vem pintado na tile, e há padding preto puro em algumas
-  bordas (ex.: coluna 0 do Overworld z5).
+  bordas (ex.: coluna 0 do Overworld z5). Tiles inteiras "lisas" da cor de fundo são o vazio
+  do th.gl (81% do Overworld), incluindo buracos no meio da terra (z6 linha 28, colunas 20–21).
 - **A pirâmide é padrão:** z5 (r,c) = z6 (2r..2r+1, 2c..2c+1) reduzido, com erro RGB médio
   de 0,21/255 no deslocamento (0,0) contra 2,7–7 nos deslocamentos vizinhos. Dá pra gerar
   zooms menores por redução.
@@ -33,7 +37,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 04 🛑: aprovação. Depois, ticket 05 (primeiro mapa no ar).
+- Tickets 06 (seletor de mapa) e 07 (cortar imagem grande); depois 08 (canal web↔tracker).
 
 ## Depende do usuário
 - Sprites dos ícones **recortados do minimapa** (teleporte, Nexus e seta, na escala real em

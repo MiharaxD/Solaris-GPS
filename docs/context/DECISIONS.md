@@ -36,8 +36,17 @@
   Exige: regerar esse arquivo sempre que a calibração do mapa mudar.
 
 - **A máscara do matching por imagem usa a cor de fundo, não alpha.** As tiles são RGB, com
-  o fundo azul pintado (~RGB(4,36,52) e variações por mapa) e padding preto puro.
+  o fundo azul pintado (~RGB(4,36,52) e variações por mapa) e padding preto puro. Tile
+  "lisa" (desvio padrão < 2, cor do fundo) = vazio: são 81% do Overworld, e há buracos
+  assim até no meio da terra (ex.: z6 linha 28, colunas 20–21), um defeito dos dados do
+  th.gl.
   Por quê: confirmado na Fase 0. O prompt supunha que as tiles tinham alpha.
+  Exige: o matching ignora regiões com a cor de fundo. O build copia as tiles lisas mesmo
+  assim (são baratas e evitam 404 no Leaflet).
+
+- **No build do web, o zoom nativo é preferido ao gerado** (ex.: z5 do Overworld), e as
+  posições sem filha são preenchidas com preto, igual ao padding nativo. O zoom mínimo é o
+  primeiro em que a grade cabe em 2×2 tiles.
 
 - **O venv do tracker usa Python 3.11 (`py -3.11`).**
   Por quê: o 3.15 é novo demais pras versões compiladas do OpenCV e do mss, e o 3.12 do uv

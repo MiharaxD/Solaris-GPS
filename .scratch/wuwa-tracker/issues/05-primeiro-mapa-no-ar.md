@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Leaflet com CRS.Simple, tileSize 512, maxNativeZoom = zoom máximo (zoom acima com upscale)
-- [ ] Template de tile {z}/{y}_{x}.webp mantendo a numeração do th.gl
-- [ ] maxBounds pelos limites do manifest; fundo azul-escuro fora dos bounds (as tiles são RGB, já com o fundo azul pintado)
-- [ ] Conversão pixel↔latlng via project/unproject no zoom máximo (px = x*512+u, py = y*512+v)
-- [ ] Tiles e índice de mapas gerados ficam fora do git
-- [ ] README com setup e créditos (Kuro Games, th.gl como fonte das tiles locais, Dimbreath/WutheringData)
-- [ ] TypeScript strict
+- [x] Leaflet com CRS.Simple, tileSize 512, maxNativeZoom = zoom máximo (zoom acima com upscale)
+- [x] Template de tile {z}/{y}_{x}.webp mantendo a numeração do th.gl
+- [x] maxBounds pelos limites do manifest; fundo azul-escuro fora dos bounds (as tiles são RGB, já com o fundo azul pintado)
+- [x] Conversão pixel↔latlng via project/unproject no zoom máximo (px = x*512+u, py = y*512+v)
+- [x] Tiles e índice de mapas gerados ficam fora do git
+- [x] README com setup e créditos (Kuro Games, th.gl como fonte das tiles locais, Dimbreath/WutheringData)
+- [x] TypeScript strict
