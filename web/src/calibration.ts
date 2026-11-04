@@ -46,6 +46,8 @@ export class CalibrationPanel {
   private dirty = false;
   private open = false;
   private loadSeq = 0;
+  /** Avisado quando os dados do mapa são carregados ou salvos (ex.: reposicionar marcadores). */
+  onData: ((map: string, data: MapDataV1 | null) => void) | null = null;
 
   private readonly pointsLayer = L.layerGroup();
   private readonly predictedLayer = L.layerGroup();
@@ -158,6 +160,7 @@ export class CalibrationPanel {
       if (seq !== this.loadSeq) return;
       this.data = asMapDataV1(raw);
       this.allRefs = refs;
+      this.onData?.(info.name, raw ? this.data : null);
       this.setStatus(raw ? `Carregado data/maps/${info.name}.json` : "Sem calibração salva para este mapa.");
       if (this.open && !raw && refs.length >= 4) void this.runEstimate();
     } catch (e) {
@@ -301,8 +304,10 @@ export class CalibrationPanel {
     const name = this.info.name;
     this.saveBtn.disabled = true;
     try {
-      const path = await saveMapData(name, this.serialize());
+      const data = this.serialize();
+      const path = await saveMapData(name, data);
       if (this.info?.name === name) this.dirty = false;
+      this.onData?.(name, data);
       this.setStatus(`Salvo em ${path}.`);
     } catch (e) {
       this.setStatus(`Não salvou (${(e as Error).message}). Use "Baixar JSON".`);

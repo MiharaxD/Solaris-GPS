@@ -6,6 +6,7 @@ import { createMapPicker } from "./mapPicker";
 import { loadPref, savePref } from "./storage";
 import { downloadMapData, loadMapData, saveMapData } from "./mapData";
 import { CalibrationPanel } from "./calibration";
+import { MarkerPanel } from "./markerPanel";
 
 const ACTIVE_MAP_PREF = "activeMap";
 
@@ -26,7 +27,9 @@ async function start(): Promise<void> {
   if (!initial) return;
 
   const calibration = new CalibrationPanel(view);
-  document.body.append(calibration.root);
+  const markers = new MarkerPanel(view, () => calibration.isOpen);
+  calibration.onData = (map, data) => markers.setMapData(map, data);
+  document.body.append(calibration.root, markers.root);
   const toolbar = el<HTMLDivElement>("toolbar");
 
   let picker: HTMLSelectElement | null = null;
@@ -41,9 +44,20 @@ async function start(): Promise<void> {
     savePref(ACTIVE_MAP_PREF, name);
     hud.textContent = "";
     void calibration.setMap(info);
+    void markers.setMap(info);
   };
 
   picker = createMapPicker(toolbar, maps, initial.name, activate);
+  const markersBtn = document.createElement("button");
+  markersBtn.type = "button";
+  markersBtn.className = "tool-btn";
+  markersBtn.textContent = "Marcadores";
+  markersBtn.setAttribute("aria-pressed", String(markers.isOpen));
+  markersBtn.addEventListener("click", () => {
+    markers.toggle();
+    markersBtn.setAttribute("aria-pressed", String(markers.isOpen));
+  });
+  toolbar.append(markersBtn);
   const calibBtn = document.createElement("button");
   calibBtn.type = "button";
   calibBtn.className = "tool-btn";
@@ -66,6 +80,7 @@ async function start(): Promise<void> {
   (window as unknown as { solaris?: unknown }).solaris = {
     view,
     calibration,
+    markers,
     mapData: { load: loadMapData, save: saveMapData, download: downloadMapData },
   };
 }

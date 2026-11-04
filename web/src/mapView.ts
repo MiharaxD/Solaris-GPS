@@ -26,8 +26,10 @@ export class MapView {
       zoomDelta: 0.5,
       wheelPxPerZoomLevel: 90,
       attributionControl: false,
+      zoomControl: false, // vai pro canto inferior: o topo esquerdo é do painel de marcadores
       maxBoundsViscosity: 0.8,
     });
+    L.control.zoom({ position: "bottomright" }).addTo(this.leaflet);
   }
 
   get active(): MapInfo | null {
