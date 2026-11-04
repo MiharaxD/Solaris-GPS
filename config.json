@@ -1,11 +1,6 @@
 {
   "tilesCache": "assets/tiles_cache",
   "mapDataDir": "data/maps",
-  "websocket": {
-    "host": "127.0.0.1",
-    "port": 8765,
-    "allowedOrigins": ["http://127.0.0.1:5173", "http://localhost:5173"]
-  },
   "screen": {
     "width": 2560,
     "height": 1440,
@@ -16,10 +11,5 @@
     "centerX": null,
     "centerY": null,
     "radius": null
-  },
-  "hotkeys": {
-    "nextMap": null,
-    "markNearest": null
-  },
-  "minimapScale": {}
+  }
 }

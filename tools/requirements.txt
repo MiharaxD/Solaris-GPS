@@ -1,0 +1,4 @@
+# Ferramentas Python (Python 3.11). Instale com:
+#   .venv/Scripts/python -m pip install -r tools/requirements.txt
+pillow
+numpy
