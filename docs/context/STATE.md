@@ -5,7 +5,7 @@
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
   `web/public/tiles` z1..zmax e `maps.json` pros 10 mapas; incremental).
-- `web/`: Vite + TS + Leaflet mostrando o primeiro mapa do índice (Overworld), com HUD de pixel
+- `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
   sob o cursor. README com setup e créditos.
 - Manifest do Overworld gerado a partir do disco (`overworld`, z5 e z6).
 - Repositório na branch `main`, remote `origin` = github.com/MiharaxD/Solaris-GPS (**público**).
@@ -37,7 +37,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Tickets 06 (seletor de mapa) e 07 (cortar imagem grande); depois 08 (canal web↔tracker).
+- Ticket 07 (cortar imagem grande) e 08 (canal web↔tracker).
 
 ## Depende do usuário
 - Sprites dos ícones **recortados do minimapa** (teleporte, Nexus e seta, na escala real em

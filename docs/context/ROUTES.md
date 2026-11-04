@@ -34,7 +34,8 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 ## Mapa web (Vite + TS + Leaflet)
 - **Ir direto para:** `web/src/mapView.ts` (Leaflet CRS.Simple, troca de mapa e conversão
   pixel↔latlng no `maxZoom`), `web/src/maps.ts` (tipos e leitura do `maps.json`),
-  `web/src/main.ts` (bootstrap e HUD) e `web/src/style.css` (tokens de cor em `:root`).
+  `web/src/main.ts` (bootstrap, troca de mapa, HUD), `web/src/mapPicker.ts` (dropdown),
+  `web/src/storage.ts` (prefs no localStorage) e `web/src/style.css` (tokens em `:root`).
 - **Rodar e validar:** `npm --prefix web run dev` (http://127.0.0.1:5173, ou `preview_start
   web` pelo `.claude/launch.json`) e `npm --prefix web run typecheck`.
 - **Cuidados:** o template de tile é `/tiles/<name>/{z}/{y}_{x}.webp` (y = linha). Os

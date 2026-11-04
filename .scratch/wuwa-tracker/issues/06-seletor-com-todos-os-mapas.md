@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Dropdown populado a partir do índice de mapas
-- [ ] Bounds/zoom ajustados por mapa
-- [ ] Escolha salva localmente e restaurada ao abrir
+- [x] Dropdown populado a partir do índice de mapas
+- [x] Bounds/zoom ajustados por mapa
+- [x] Escolha salva localmente e restaurada ao abrir

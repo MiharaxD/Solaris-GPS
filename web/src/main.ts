@@ -1,7 +1,11 @@
 import "leaflet/dist/leaflet.css";
 import "./style.css";
-import { loadMaps } from "./maps";
+import { loadMaps, type MapInfo } from "./maps";
 import { MapView } from "./mapView";
+import { createMapPicker } from "./mapPicker";
+import { loadPref, savePref } from "./storage";
+
+const ACTIVE_MAP_PREF = "activeMap";
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -14,21 +18,35 @@ async function start(): Promise<void> {
   const view = new MapView(el<HTMLDivElement>("map"));
 
   const maps = await loadMaps();
-  const first = maps[0];
-  if (!first) return;
-  view.show(first);
+  const byName = new Map<string, MapInfo>(maps.map((m) => [m.name, m]));
+  const saved = loadPref(ACTIVE_MAP_PREF);
+  const initial = (saved && byName.get(saved)) || maps[0];
+  if (!initial) return;
+
+  const activate = (name: string): void => {
+    const info = byName.get(name);
+    if (!info) return;
+    view.show(info);
+    savePref(ACTIVE_MAP_PREF, name);
+    hud.textContent = "";
+    // Ticket 08: avisar o tracker do mapa ativo pelo WebSocket aqui.
+  };
+
+  createMapPicker(el<HTMLDivElement>("toolbar"), maps, initial.name, activate);
+  activate(initial.name);
 
   // Coordenada em pixel do zoom máximo sob o cursor (base da calibração e dos fixtures).
   view.leaflet.on("mousemove", (e) => {
     const p = view.toPixel(e.latlng);
-    hud.textContent = `${view.active?.name ?? ""}  px ${Math.round(p.x)}, ${Math.round(p.y)}`;
+    hud.textContent = `px ${Math.round(p.x)}, ${Math.round(p.y)}`;
   });
 }
 
 start().catch((err: unknown) => {
   const msg = err instanceof Error ? err.message : String(err);
-  document.body.insertAdjacentHTML("beforeend", `<div class="fatal"></div>`);
-  const box = document.querySelector<HTMLDivElement>(".fatal");
-  if (box) box.textContent = msg;
+  const box = document.createElement("div");
+  box.className = "fatal";
+  box.textContent = msg;
+  document.body.append(box);
   console.error(err);
 });

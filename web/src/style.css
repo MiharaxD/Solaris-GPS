@@ -22,6 +22,31 @@ body {
   background: var(--map-bg);
 }
 
+.toolbar {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.map-picker {
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.map-picker:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .hud {
   position: fixed;
   left: 10px;
