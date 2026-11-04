@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tabela-resumo dos 10 mapas impressa no terminal
-- [ ] Pastas de zoom acima do máximo que só têm arquivos de 0 bytes (sondagem do downloader) são ignoradas
-- [ ] Arquivos de 0 bytes nunca são abertos como imagem
-- [ ] Manifest do Overworld gerado com z5 e z6, first_number_is_row=true, tile_size lido de uma tile real
-- [ ] Nenhum acesso à rede
+- [x] Tabela-resumo dos 10 mapas impressa no terminal
+- [x] Pastas de zoom acima do máximo que só têm arquivos de 0 bytes (sondagem do downloader) são ignoradas
+- [x] Arquivos de 0 bytes nunca são abertos como imagem
+- [x] Manifest do Overworld gerado com z5 e z6, first_number_is_row=true, tile_size lido de uma tile real
+- [x] Nenhum acesso à rede
