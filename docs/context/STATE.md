@@ -70,16 +70,18 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 18 (escala minimapa→mapa): precisa de fixtures reais com posição anotada. O ticket 10 (afim por área) fica
+- **Parado no ticket 18** (escala minimapa→mapa), esperando os prints do usuário. Os tickets
+  18–23 dependem de fixtures reais pra escolher os algoritmos pelos números. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
 
 ## Depende do usuário
-- Salvar como arquivo em `tracker/icons/` os sprites recortados do minimapa (o usuário mandou
-  no chat, mas só como imagem anexada). Escala observada no minimapa a 1440p: Nexus ~34 px,
-  teleporte ~14×34 px. Falta também o sprite da seta.
-- Prints de tela cheia anotados pelo botão "Fixture" (Fase 2) e a escala de UI. Resolução: 2560×1440.
+- **Bloqueante:** 8–10 prints de tela cheia (2560×1440) anotados pelo botão "Fixture" em
+  `tracker/fixtures/`, com casos de 0, 1 e 2+ ícones, campo aberto, cidade e direções variadas.
+  Pedido ao usuário em 2026-11-04; a pasta ainda está vazia.
+- Os sprites do minimapa (teleporte, Nexus e seta) serão recortados desses prints, não pedidos
+  à parte. Escala observada a 1440p: Nexus ~34 px, teleporte ~14×34 px.
 - Teleportes à mão nos 3 mapas sem dados (pelo "+ Novo marcador").
 
 ## Limitações conhecidas
