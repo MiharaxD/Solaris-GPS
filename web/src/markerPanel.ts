@@ -19,6 +19,7 @@ import {
 import type { MapInfo } from "./maps";
 import { loadMapData } from "./mapData";
 import { mapLabel } from "./mapPicker";
+import { ImportDialog } from "./importDialog";
 import { parseBackup, percent, tallyMarkers, type ManualMarker, type ProgressStore, type Tally } from "./progress";
 import type { MapView } from "./mapView";
 import { loadPref, savePref } from "./storage";
@@ -83,6 +84,7 @@ export class MarkerPanel {
   private dataMarkers: GameMarker[] = [];
   private mapManual: ManualMarker[] = [];
   private mode: ClickMode = null;
+  private importer: ImportDialog | null = null;
   private texts: string[] = [];
   private placed = new Map<string, PlacedItem<GameMarker>>();
   private transform: Affine | null = null;
@@ -142,6 +144,9 @@ export class MarkerPanel {
     const restoreBtn = h("button", { type: "button", className: "mk-btn", textContent: "Restaurar…" });
     restoreBtn.title = "Substitui o progresso pelo de um backup";
     restoreBtn.addEventListener("click", () => file.click());
+    const importBtn = h("button", { type: "button", className: "mk-btn", textContent: "Importar th.gl…" });
+    importBtn.title = 'Marca encontrados a partir do backup do th.gl ("id@x:y")';
+    importBtn.addEventListener("click", () => this.openImport());
 
     this.root = h(
       "aside",
@@ -155,7 +160,7 @@ export class MarkerPanel {
       this.cats,
       h("label", { className: "mk-check" }, this.hideFoundBox, "Esconder encontrados"),
       this.allMaps,
-      h("div", { className: "mk-actions" }, backupBtn, restoreBtn, file),
+      h("div", { className: "mk-actions" }, backupBtn, restoreBtn, importBtn, file),
     );
     this.addBtn.title = "Clique no botão e depois no mapa (Esc cancela)";
     this.addBtn.addEventListener("click", () => this.setMode(this.mode?.kind === "add" ? null : { kind: "add" }));
@@ -460,6 +465,23 @@ export class MarkerPanel {
           ),
         ),
     );
+  }
+
+  private openImport(): void {
+    const info = this.info;
+    if (!info) return;
+    const markers = this.dataMarkers.filter((m) => !this.ignored.has(m.id));
+    if (!markers.length) {
+      this.status.textContent = "Este mapa não tem marcadores do WutheringData pra casar.";
+      return;
+    }
+    this.importer ??= new ImportDialog();
+    this.importer.open({
+      mapLabel: mapLabel(info.name),
+      markers,
+      isFound: (id) => this.progress.isFound(info.name, id),
+      apply: (ids) => this.progress.setFoundMany(info.name, ids, true),
+    });
   }
 
   private downloadBackup(): void {
