@@ -6,6 +6,7 @@ Subcomandos:
     manifest <map_id> --name NOME  gera manifest.json a partir do disco (se faltar)
     pyramid <map_id> --lo N        testa se zoom N == zoom N+1 reduzido
     build                          tiles + zooms menores + maps.json em web/public/
+    slice <imagem> --name NOME     corta uma imagem única em tiles + manifest no cache
 
 Convenção do cache (mesma do tools/wuwa_maps.py com --swap-xy):
     <cache>/<map_id>/<z>/<linha>_<coluna>.webp   (arquivo de 0 bytes = tile inexistente)
@@ -287,12 +288,22 @@ def _shifted_parent(map_dir: Path, hi: int, r: int, c: int, dr: int, dc: int,
 MIN_GRID_TILES = 2  # zoom mínimo: o mapa inteiro cabe em ~2x2 tiles (1024 px)
 
 
+def _open_tile(p: Path) -> Image.Image:
+    """Abre mantendo alpha se houver (tiles do th.gl são RGB; as do `slice` podem ser RGBA)."""
+    im = Image.open(p)
+    return im.convert("RGBA" if "A" in im.getbands() else "RGB")
+
+
 def _reduce_children(children: dict[tuple[int, int], Image.Image], size: tuple[int, int]) -> Image.Image:
-    """Monta 2x2 filhas (faltantes = preto, igual ao padding nativo) e reduz pra uma tile."""
+    """Monta 2x2 filhas e reduz pra uma tile.
+
+    Faltantes: preto (igual ao padding nativo do th.gl) em RGB; transparente em RGBA.
+    """
     w, h = size
-    big = Image.new("RGB", (2 * w, 2 * h), (0, 0, 0))
+    rgba = any(im.mode == "RGBA" for im in children.values())
+    big = Image.new("RGBA", (2 * w, 2 * h), (0, 0, 0, 0)) if rgba else Image.new("RGB", (2 * w, 2 * h), (0, 0, 0))
     for (i, j), im in children.items():
-        big.paste(im, (j * w, i * h))
+        big.paste(im.convert(big.mode), (j * w, i * h))
     return big.resize(size, Image.Resampling.BOX)
 
 
@@ -352,7 +363,7 @@ def build_map(map_dir: Path, out_root: Path, quality: int) -> dict:
             if dst.exists() and all(dst.stat().st_mtime >= p.stat().st_mtime for p in kids.values()):
                 skipped += 1
                 continue
-            children = {k: Image.open(p).convert("RGB") for k, p in kids.items()}
+            children = {k: _open_tile(p) for k, p in kids.items()}
             _reduce_children(children, size).save(dst, "WEBP", quality=quality, method=6)
             generated += 1
         current = parents
@@ -389,6 +400,58 @@ def cmd_build(cache: Path, out_root: Path, index_path: Path, only: list[str], qu
     return 0
 
 
+def cmd_slice(cache: Path, image: Path, name: str, map_id: str, zoom: int | None, tile: int,
+              origin_row: int, origin_col: int, quality: int, lossless: bool, max_pixels: int,
+              force: bool) -> int:
+    """Corta uma imagem única em tiles no formato do cache (z/linha_coluna.webp) + manifest.
+
+    Depois disso o mapa entra no `build` como qualquer outro. Tiles 100% transparentes não
+    são gravadas. A imagem é carregada inteira (limite em --max-pixels); o corte em si é por
+    tile, sem cópias intermediárias grandes.
+    """
+    import math
+
+    map_dir = cache / map_id
+    if (map_dir / "manifest.json").exists() and not force:
+        raise SystemExit(f"{map_dir} já tem manifest (use --force para sobrescrever)")
+    with Image.open(image) as probe:
+        w, h = probe.size
+    if w * h > max_pixels:
+        raise SystemExit(f"Imagem de {w * h / 1e6:.0f} MP passa do limite ({max_pixels / 1e6:.0f} MP); "
+                         "aumente --max-pixels se tiver RAM")
+    if zoom is None:
+        zoom = max(0, math.ceil(math.log2(max(w, h) / tile)))
+    Image.MAX_IMAGE_PIXELS = max_pixels
+    src = Image.open(image)
+    src = src.convert("RGBA" if "A" in src.getbands() else "RGB")
+    rows, cols = math.ceil(h / tile), math.ceil(w / tile)
+    out = map_dir / str(zoom)
+    out.mkdir(parents=True, exist_ok=True)
+    written = skipped = 0
+    for r in range(rows):
+        for c in range(cols):
+            box = (c * tile, r * tile, min((c + 1) * tile, w), min((r + 1) * tile, h))
+            piece = src.crop(box)
+            if piece.size != (tile, tile):  # borda: completa com vazio
+                fill = (0, 0, 0, 0) if src.mode == "RGBA" else (0, 0, 0)
+                canvas = Image.new(src.mode, (tile, tile), fill)
+                canvas.paste(piece, (0, 0))
+                piece = canvas
+            if piece.mode == "RGBA" and piece.getchannel("A").getextrema()[1] == 0:
+                skipped += 1
+                continue
+            dst = out / f"{origin_row + r}_{origin_col + c}.webp"
+            piece.save(dst, "WEBP", lossless=lossless, quality=100 if lossless else quality, method=6)
+            written += 1
+    src.close()
+    manifest = build_manifest(map_dir, name)
+    manifest["generated_by"] = f"tools/build_tiles.py slice ({image.name})"
+    (map_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"{name}: {w}x{h}px → z{zoom}, grade {rows}x{cols}, gravadas={written}, transparentes puladas={skipped}")
+    print(f"Manifest em {map_dir / 'manifest.json'}. Rode `build` para levar ao web.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cache", type=Path, default=DEFAULT_CACHE)
@@ -408,11 +471,27 @@ def main(argv: list[str] | None = None) -> int:
     bd.add_argument("--index", type=Path, default=Path("web/public/maps.json"))
     bd.add_argument("--only", nargs="*", default=[], help="nomes de mapas (não reescreve o índice)")
     bd.add_argument("--quality", type=int, default=90)
+    sl = sub.add_parser("slice", help="corta uma imagem única em tiles + manifest no cache")
+    sl.add_argument("image", type=Path)
+    sl.add_argument("--name", required=True, help="nome do mapa no app (ex.: meu-mapa)")
+    sl.add_argument("--map-id", help="pasta no cache (padrão: --name)")
+    sl.add_argument("--zoom", type=int, help="zoom da imagem (padrão: menor z em que cabe numa grade 2^z)")
+    sl.add_argument("--tile", type=int, default=512)
+    sl.add_argument("--origin-row", type=int, default=0, help="linha da tile no canto sup. esquerdo")
+    sl.add_argument("--origin-col", type=int, default=0, help="coluna da tile no canto sup. esquerdo")
+    sl.add_argument("--quality", type=int, default=90)
+    sl.add_argument("--lossless", action="store_true")
+    sl.add_argument("--max-pixels", type=int, default=400_000_000)
+    sl.add_argument("--force", action="store_true")
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     if args.cmd == "inventory":
         return cmd_inventory(args.cache, args.alpha)
+    if args.cmd == "slice":
+        return cmd_slice(args.cache, args.image, args.name, args.map_id or args.name, args.zoom, args.tile,
+                         args.origin_row, args.origin_col, args.quality, args.lossless, args.max_pixels,
+                         args.force)
     if args.cmd == "build":
         return cmd_build(args.cache, args.out, args.index, args.only, args.quality)
     if args.cmd == "pyramid":

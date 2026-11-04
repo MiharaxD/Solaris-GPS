@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Corte em streaming/por blocos, sem carregar imagens gigantes inteiras em RAM quando evitável
-- [ ] Gera manifest equivalente e entra no índice de mapas
-- [ ] Tiles totalmente transparentes não são gravadas
+- [x] Corte em streaming/por blocos, sem carregar imagens gigantes inteiras em RAM quando evitável
+- [x] Gera manifest equivalente e entra no índice de mapas
+- [x] Tiles totalmente transparentes não são gravadas
