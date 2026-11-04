@@ -8,7 +8,12 @@
   tiles + manifest; preserva alpha).
 - Calibração por mapa (ticket 09): o botão "Calibrar" estima sozinho (Overworld: 208/208
   referências em terra, orientação direta X→x, Y→y, ~0,5 s), e o usuário corrige 2–3 bolinhas
-  comparando com o mapa do jogo. Ainda **nenhum mapa foi calibrado de verdade**.
+  comparando com o mapa do jogo. Calibrados pelo usuário (`data/maps/`): overworld (9 pontos,
+  RMS 3,5 px, cobrindo Huanglong e Rinascita), lahai-roi (2,1), avinoleum (2,4), tethys-deep
+  (1,4) e vault-underground (0,5). Falta o fabricatorium (usar "Ignorar" nos 2 do Energy Hub).
+  honami-city, dimmr-plains, simulacrum-nexus-mengzhou e chronorift-metropolis (1 Nexus) não
+  têm referências suficientes. Não precisam de calibração pro tracker (que trabalha em pixel);
+  ela só faria falta pra importar coordenadas de jogo.
 - `tools/extract_refs.py` → `web/public/refs/` (7 mapas; os outros 3 não têm dados).
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
@@ -44,7 +49,9 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 10 (calibração por área no Overworld); depois 11, 13 e 15. Tickets 08, 15 e 17–30 foram
+- Ticket 11 (marcadores do WutheringData); depois 12–15. O ticket 10 (afim por área) fica
+  adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
+  à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
 
 ## Depende do usuário

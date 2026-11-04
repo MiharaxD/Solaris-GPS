@@ -66,6 +66,9 @@
   Em `data/maps` (repositório público) vão só `refId`, `game` e `px`. O rótulo vem das
   referências locais e nunca é salvo. A afim e o RMS são gravados junto, derivados dos
   pontos. A estimativa não é salva.
+  Referências que não existem no jogo (ex.: os 2 teleportes do Energy Hub no Fabricatorium,
+  em outra altura/andar) vão pra `ignoredRefs` em `data/maps`. Elas ficam fora da estimativa
+  e da calibração, e o tracker e os marcadores precisam respeitar essa lista.
 
 - **Fixtures são anotados clicando no mapa web** (ticket 15), a partir de um print ou do
   frame atual da tela compartilhada. Por quê: o WuWa não mostra coordenada na tela.
