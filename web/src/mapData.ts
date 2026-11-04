@@ -4,6 +4,43 @@
  */
 export type MapData = Record<string, unknown>;
 
+/** Um ponto de calibração: coordenada de jogo ↔ pixel do zoom máximo. */
+export interface CalibrationPoint {
+  id: string;
+  game: [number, number];
+  px: [number, number];
+  /** Referência do WutheringData usada (ex.: "tp-300011"), se houver. */
+  refId?: string;
+  label?: string;
+}
+
+export interface Calibration {
+  points: CalibrationPoint[];
+  /** Derivada dos pontos (recalculada ao salvar), pra ferramentas que não refazem o ajuste. */
+  affine?: [number, number, number, number, number, number];
+  rms?: number;
+}
+
+/** Formato de data/maps/<name>.json. Campos desconhecidos são preservados ao salvar. */
+export interface MapDataV1 extends MapData {
+  version: 1;
+  calibration?: Calibration;
+}
+
+function isPoint(v: unknown): v is CalibrationPoint {
+  const p = v as CalibrationPoint;
+  const vec = (a: unknown) => Array.isArray(a) && a.length === 2 && a.every((n) => typeof n === "number");
+  return typeof v === "object" && v !== null && typeof p.id === "string" && vec(p.game) && vec(p.px);
+}
+
+/** Normaliza o que veio do disco (ou nada) para MapDataV1, sem perder campos extras. */
+export function asMapDataV1(raw: MapData | null): MapDataV1 {
+  const base: MapData = raw ?? {};
+  const cal = base.calibration as Partial<Calibration> | undefined;
+  const points = Array.isArray(cal?.points) ? cal.points.filter(isPoint) : [];
+  return { ...base, version: 1, calibration: { ...cal, points } };
+}
+
 const CLIENT_HEADER = "X-Solaris-Client";
 
 async function errorText(res: Response): Promise<string> {

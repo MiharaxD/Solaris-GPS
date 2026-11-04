@@ -4,6 +4,8 @@
   --panel-bg: rgba(8, 20, 30, 0.85);
   --panel-fg: #dfe8ee;
   --accent: #f5c542;
+  --muted: #9fb0bc;
+  --danger: #ff6b5e;
   color-scheme: dark;
 }
 
@@ -72,4 +74,181 @@ body {
   border-radius: 6px;
   background: var(--panel-bg);
   white-space: pre-wrap;
+}
+
+/* ---- Barra de ferramentas: botões ---- */
+.tool-btn,
+.calib-panel button {
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tool-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tool-btn:focus-visible,
+.calib-panel button:focus-visible,
+.calib-panel input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---- Painel de calibração ---- */
+.calib-panel {
+  position: fixed;
+  top: 56px;
+  right: 10px;
+  z-index: 1000;
+  width: min(380px, calc(100vw - 20px));
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--panel-bg);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+.calib-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calib-panel h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.calib-panel .calib-close {
+  padding: 2px 8px;
+}
+
+.calib-field {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.calib-panel input[type="search"],
+.calib-panel input[type="number"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--panel-fg);
+  font: inherit;
+}
+
+.calib-manual {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.calib-hint {
+  margin: 10px 0;
+  color: var(--accent);
+}
+
+.calib-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.calib-table th,
+.calib-table td {
+  padding: 3px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+.calib-table td:nth-child(3) {
+  text-align: right;
+}
+
+.calib-table .warn {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.calib-panel button.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+.calib-stats,
+.calib-status {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.calib-check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.calib-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.calib-panel button.secondary {
+  background: transparent;
+}
+
+.leaflet-container.calibrating {
+  cursor: crosshair;
+}
+
+/* Pontos clicados (arrastáveis) */
+.calib-pt {
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #111;
+  font: 600 11px/1 system-ui, sans-serif;
+}
+
+.calib-pt.warn {
+  background: var(--danger);
+  color: #fff;
+}
+
+.calib-err {
+  stroke: var(--danger);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+
+/* Onde a afim prevê as outras referências */
+.calib-pred {
+  stroke: #fff;
+  stroke-width: 1.5;
+  fill: #5ab4ff;
+  fill-opacity: 0.85;
+}
+
+.calib-pred.nexus {
+  fill: #c58bff;
 }

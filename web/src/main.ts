@@ -5,6 +5,7 @@ import { MapView } from "./mapView";
 import { createMapPicker } from "./mapPicker";
 import { loadPref, savePref } from "./storage";
 import { downloadMapData, loadMapData, saveMapData } from "./mapData";
+import { CalibrationPanel } from "./calibration";
 
 const ACTIVE_MAP_PREF = "activeMap";
 
@@ -24,15 +25,35 @@ async function start(): Promise<void> {
   const initial = (saved && byName.get(saved)) || maps[0];
   if (!initial) return;
 
+  const calibration = new CalibrationPanel(view);
+  document.body.append(calibration.root);
+  const toolbar = el<HTMLDivElement>("toolbar");
+
+  let picker: HTMLSelectElement | null = null;
   const activate = (name: string): void => {
     const info = byName.get(name);
     if (!info) return;
+    if (view.active && view.active.name !== name && !calibration.canLeave()) {
+      if (picker) picker.value = view.active.name; // usuário cancelou: volta o seletor
+      return;
+    }
     view.show(info);
     savePref(ACTIVE_MAP_PREF, name);
     hud.textContent = "";
+    void calibration.setMap(info);
   };
 
-  createMapPicker(el<HTMLDivElement>("toolbar"), maps, initial.name, activate);
+  picker = createMapPicker(toolbar, maps, initial.name, activate);
+  const calibBtn = document.createElement("button");
+  calibBtn.type = "button";
+  calibBtn.className = "tool-btn";
+  calibBtn.textContent = "Calibrar";
+  calibBtn.setAttribute("aria-pressed", "false");
+  calibBtn.addEventListener("click", () => {
+    calibration.toggle();
+    calibBtn.setAttribute("aria-pressed", String(calibration.isOpen));
+  });
+  toolbar.append(calibBtn);
   activate(initial.name);
 
   // Coordenada em pixel do zoom máximo sob o cursor (base da calibração e dos fixtures).
@@ -44,6 +65,7 @@ async function start(): Promise<void> {
   // Exposto só para depuração no console do navegador.
   (window as unknown as { solaris?: unknown }).solaris = {
     view,
+    calibration,
     mapData: { load: loadMapData, save: saveMapData, download: downloadMapData },
   };
 }
