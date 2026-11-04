@@ -20,3 +20,8 @@ vendor/
 Thumbs.db
 .DS_Store
 .vscode/
+
+# Prints e sprites do jogo (© Kuro Games) — só locais, repo é público
+tracker/icons/*.png
+tracker/samples/
+tracker/fixtures/
