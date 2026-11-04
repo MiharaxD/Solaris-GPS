@@ -11,10 +11,13 @@ Python: use `py -3.11`. O padrão da máquina é o 3.15, novo demais pras libs. 
 não funciona: o 3.12 que existe foi instalado pelo uv e não está registrado no `py`.
 
 ## Comandos
-- Python do projeto: `.venv/Scripts/python` (3.11). Pra recriar:
-  `py -3.11 -m venv .venv` e depois `.venv/Scripts/python -m pip install pillow numpy`.
+- Python do projeto: `.venv/Scripts/python` (3.11). Pra recriar: `py -3.11 -m venv .venv`.
 - Inventário dos mapas: `.venv/Scripts/python tools/build_tiles.py inventory`.
-- Os comandos do web e do tracker entram aqui quando os tickets 05, 08 e 17 existirem.
+- Dependências Python: `.venv/Scripts/python -m pip install -r tracker/requirements.txt`.
+- Web: `npm --prefix web install`, `npm --prefix web run dev` (http://127.0.0.1:5173) e
+  `npm --prefix web run typecheck`.
+- Tiles do web: `.venv/Scripts/python tools/build_tiles.py build`.
+- Tracker: `.venv/Scripts/python -m tracker`. Testes: `.venv/Scripts/python -m pytest`.
 
 **Só com pedido explícito do usuário:**
 - `python tools/wuwa_maps.py --cache assets/tiles_cache --out assets/mapas ...` baixa do CDN

@@ -45,11 +45,21 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - Dados do mapa (calibração, teleportes, Nexus, escala) vêm de `data/maps/<name>.json`
   *(planejado)*. Progresso do usuário fica no IndexedDB.
 
-## Tracker (Python 3.11) *(planejado, `tracker/`)*
-- Tickets 08 (WebSocket e config), 17–23 (PoC com fixtures), 25–28 (ao vivo).
-- Sprites em `tracker/icons/` e prints em `tracker/fixtures/` são fornecidos pelo usuário.
-- `config.json` *(planejado)*: resolução, minimapa, hotkeys, porta, caminho do cache, escala
-  por mapa.
+## Tracker (Python 3.11) e canal web↔tracker
+- **Ir direto para:** `tracker/server.py` (WebSocket, origem checada, mapa ativo),
+  `tracker/protocol.py` (mensagens; espelho em `web/src/protocol.ts`, mude os dois juntos),
+  `tracker/map_data.py` (`data/maps/<name>.json`, escrita atômica, nome validado),
+  `tracker/config.py` (lê o `config.json` da raiz) e `web/src/tracker.ts` (cliente com
+  reconexão, `saveMapData`/`getMapData`).
+- **Rodar:** `.venv/Scripts/python -m tracker` (ws://127.0.0.1:8765).
+- **Testar:** `.venv/Scripts/python -m pytest` (`tracker/tests/`).
+- **Cuidados:** só localhost e `allowedOrigins` do `config.json`. O web precisa funcionar com
+  o tracker desligado (requests rejeitam e a UI oferece alternativa). No console do web,
+  `window.solaris` expõe `tracker` e `view` pra depuração.
+- `config.json`: caminhos, WebSocket, tela (2560×1440), minimapa, hotkeys e `minimapScale`
+  por mapa (seções sem uso ainda ficam em `Config.raw`).
+- Sprites em `tracker/icons/` e prints em `tracker/fixtures/` e `tracker/samples/` são do
+  usuário (ignorados pelo git). Fases 2–3: tickets 17–28.
 
 ## Dados de entidades (WutheringData)
 - **Ir direto para:** `vendor/WutheringData/ConfigDB/`. Clone parcial: pra incluir um

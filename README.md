@@ -64,6 +64,33 @@ npm --prefix web run dev
 
 Abra http://127.0.0.1:5173. O servidor só escuta em localhost.
 
+## Rodar o tracker
+
+```bash
+.venv/Scripts/python -m pip install -r tracker/requirements.txt
+```
+
+```bash
+.venv/Scripts/python -m tracker
+```
+
+Ele sobe um WebSocket em `ws://127.0.0.1:8765` e só aceita conexões do mapa web (as origens
+ficam em `config.json`). Por enquanto, ele recebe o mapa ativo e grava os dados de calibração
+em `data/maps/`. A captura do minimapa vem nas próximas fases. O mapa web funciona com o
+tracker desligado.
+
+Testes:
+
+```bash
+.venv/Scripts/python -m pytest
+```
+
+## Configuração
+
+`config.json` (na raiz): caminho do cache de tiles, pasta `data/maps`, porta e origens do
+WebSocket, resolução da tela, posição e formato do minimapa, hotkeys e escala
+minimapa→mapa calibrada por mapa.
+
 ## Créditos e direitos
 
 - **Wuthering Waves**: arte, assets e dados © Kuro Games. Este projeto não é afiliado nem

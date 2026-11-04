@@ -4,12 +4,15 @@
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
-  `web/public/tiles` z1..zmax e `maps.json` pros 10 mapas; incremental).
+  `web/public/tiles` z1..zmax e `maps.json` pros 10 mapas; incremental) e `slice` (imagem única →
+  tiles + manifest; preserva alpha).
+- Canal web↔tracker: `python -m tracker` sobe o WebSocket local; o web mostra o status, envia o
+  mapa ativo e grava/lê `data/maps/<name>.json` via tracker. 12 testes em `tracker/tests/`.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
   sob o cursor. README com setup e créditos.
 - Manifest do Overworld gerado a partir do disco (`overworld`, z5 e z6).
 - Repositório na branch `main`, remote `origin` = github.com/MiharaxD/Solaris-GPS (**público**).
-- `.venv` com Python 3.11, Pillow e numpy (`.venv/Scripts/python`).
+- `.venv` com Python 3.11 e `tracker/requirements.txt` (Pillow, numpy, websockets, pytest).
 - WutheringData em `vendor/WutheringData` (clone parcial com sparse checkout, só os
   arquivos usados).
 
@@ -37,11 +40,12 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 07 (cortar imagem grande) e 08 (canal web↔tracker).
+- Ticket 09 (calibração afim por mapa); depois 10, 11, 13 e 15.
 
 ## Depende do usuário
-- Sprites dos ícones **recortados do minimapa** (teleporte, Nexus e seta, na escala real em
-  1440p). Os enviados (59×82 e 94×85) parecem vir do mapa grande.
+- Salvar como arquivo em `tracker/icons/` os sprites recortados do minimapa (o usuário mandou
+  no chat, mas só como imagem anexada). Escala observada no minimapa a 1440p: Nexus ~34 px,
+  teleporte ~14×34 px. Falta também o sprite da seta.
 - Prints de tela cheia pros fixtures (Fase 2) e a escala de UI. Resolução: 2560×1440.
 - Pontos de calibração (Fase 1). Teleportes à mão só nos 3 mapas sem dados.
 - Instalar o Rust antes da Fase 4.
