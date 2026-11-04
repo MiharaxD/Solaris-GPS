@@ -56,11 +56,16 @@
   nunca é commitado.** Só o crédito vai no README. O que o usuário cadastra à mão em
   `data/maps/` vai pro repositório.
 
-- **Calibração = teleporte conhecido + clique no mapa.** O WuWa não mostra coordenada, então
-  a coordenada de jogo vem da referência do WutheringData escolhida (ou é digitada à mão).
-  Em `data/maps` (repositório público) o ponto guarda só `refId`, `game` e `px`. O rótulo
-  (nome da área) é montado das referências locais e nunca é salvo. A afim e o RMS são
-  gravados junto, derivados dos pontos.
+- **Calibração sem precisar identificar nomes.** O WuWa não mostra coordenada e os nomes das
+  referências são genéricos ("Teleporte · Jinzhou #3"). Por isso o painel primeiro **estima
+  sozinho**: testa as 8 orientações de eixo e a escala/deslocamento que põem mais referências
+  em terra (máscara = pixel que não é fundo nem preto). O usuário corrige comparando com o
+  mapa do jogo: clica na bolinha e depois no lugar certo. Com 1 ponto, a estimativa só se
+  desloca; com 2, vira similaridade (espelhamento herdado da estimativa); com 3 ou mais, afim
+  por mínimos quadrados.
+  Em `data/maps` (repositório público) vão só `refId`, `game` e `px`. O rótulo vem das
+  referências locais e nunca é salvo. A afim e o RMS são gravados junto, derivados dos
+  pontos. A estimativa não é salva.
 
 - **Fixtures são anotados clicando no mapa web** (ticket 15), a partir de um print ou do
   frame atual da tela compartilhada. Por quê: o WuWa não mostra coordenada na tela.

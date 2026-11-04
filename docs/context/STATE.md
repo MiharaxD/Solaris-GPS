@@ -6,9 +6,9 @@
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
   `web/public/tiles` z1..zmax e `maps.json` pros 10 mapas; incremental) e `slice` (imagem única →
   tiles + manifest; preserva alpha).
-- Calibração afim por mapa (ticket 09): botão "Calibrar" → escolher teleporte/Nexus do
-  WutheringData (ou X/Y) → clicar no mapa. Mostra resíduo por ponto, RMS e onde as outras
-  referências cairiam. Ainda **nenhum mapa foi calibrado de verdade** (precisa do usuário).
+- Calibração por mapa (ticket 09): o botão "Calibrar" estima sozinho (Overworld: 208/208
+  referências em terra, orientação direta X→x, Y→y, ~0,5 s), e o usuário corrige 2–3 bolinhas
+  comparando com o mapa do jogo. Ainda **nenhum mapa foi calibrado de verdade**.
 - `tools/extract_refs.py` → `web/public/refs/` (7 mapas; os outros 3 não têm dados).
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.

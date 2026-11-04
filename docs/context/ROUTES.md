@@ -42,8 +42,10 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `bounds` do tile layer evitam 404 fora da grade. Leaflet 1.9 e TypeScript 7 em strict.
 - **Não precisa ler:** `web/public/tiles/`, `web/public/maps.json` (gerados) e `web/dist/`.
 - **Calibração (ticket 09):** `web/src/calibration.ts` (painel, pontos arrastáveis, vetor de
-  erro, previsão das outras referências), `web/src/affine.ts` (ajuste normalizado, inversa e
-  resíduos; testes em `affine.test.ts`) e `web/src/refs.ts` (lê `/refs/<name>.json`).
+  erro, previsão das outras referências, escolha da transformação em `transform()`),
+  `web/src/autoCalib.ts` (máscara de terra + busca das 8 orientações), `web/src/affine.ts`
+  (afim/similaridade normalizadas, inversa, `anchorAt`; testes em `affine.test.ts`) e
+  `web/src/refs.ts` (lê `/refs/<name>.json`).
 - Tickets 10–15 seguem daqui. No console do web, `window.solaris` expõe `view` e `mapData`
   pra depuração.
 
