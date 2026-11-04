@@ -1,0 +1,11 @@
+[project]
+name = "solaris-gps"
+version = "0.1.0"
+description = "Mapa interativo e tracker por minimapa para Wuthering Waves (uso pessoal)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tracker/tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

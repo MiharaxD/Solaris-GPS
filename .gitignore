@@ -25,3 +25,6 @@ Thumbs.db
 tracker/icons/*.png
 tracker/samples/
 tracker/fixtures/
+
+# Python/pytest
+.pytest_cache/
