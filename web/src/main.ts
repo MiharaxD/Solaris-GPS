@@ -7,6 +7,7 @@ import { loadPref, savePref } from "./storage";
 import { downloadMapData, loadMapData, patchMapData, saveMapData } from "./mapData";
 import { CalibrationPanel } from "./calibration";
 import { FixturePanel } from "./fixturePanel";
+import { TrackerPanel } from "./trackerPanel";
 import { MarkerPanel } from "./markerPanel";
 import { ProgressStore } from "./progress";
 
@@ -30,6 +31,8 @@ async function start(): Promise<void> {
 
   const calibration = new CalibrationPanel(view);
   const fixtures = new FixturePanel(view);
+  const tracker = new TrackerPanel();
+  tracker.onSharingChange((on) => fixtures.setFrameSource(on ? () => tracker.grabPng() : null));
   const progress = await ProgressStore.open();
   const markers = new MarkerPanel(view, () => calibration.isOpen || fixtures.isOpen, progress, async (map, patch) => {
     const merged = await patchMapData(map, patch);
@@ -38,7 +41,7 @@ async function start(): Promise<void> {
   });
   markers.setMaps(maps);
   calibration.onData = (map, data) => markers.setMapData(map, data);
-  document.body.append(calibration.root, fixtures.root, markers.root);
+  document.body.append(calibration.root, fixtures.root, tracker.root, tracker.preview, markers.root);
   const toolbar = el<HTMLDivElement>("toolbar");
 
   let picker: HTMLSelectElement | null = null;
@@ -78,9 +81,11 @@ async function start(): Promise<void> {
   const syncModes = () => {
     calibBtn.setAttribute("aria-pressed", String(calibration.isOpen));
     fixtureBtn.setAttribute("aria-pressed", String(fixtures.isOpen));
+    trackerBtn.setAttribute("aria-pressed", String(tracker.isOpen));
   };
   calibBtn.addEventListener("click", () => {
     if (!calibration.isOpen && fixtures.isOpen) fixtures.toggle(false);
+    if (!calibration.isOpen && tracker.isOpen) tracker.toggle(false);
     calibration.toggle();
     syncModes();
   });
@@ -92,12 +97,28 @@ async function start(): Promise<void> {
   fixtureBtn.setAttribute("aria-pressed", "false");
   fixtureBtn.addEventListener("click", () => {
     if (!fixtures.isOpen && calibration.isOpen) calibration.toggle(false);
+    if (!fixtures.isOpen && tracker.isOpen) tracker.toggle(false);
     fixtures.toggle();
     syncModes();
   });
   toolbar.append(fixtureBtn);
+  const trackerBtn = document.createElement("button");
+  trackerBtn.type = "button";
+  trackerBtn.className = "tool-btn";
+  trackerBtn.textContent = "Tracker";
+  trackerBtn.title = "Compartilhar a tela do jogo e recortar o minimapa";
+  trackerBtn.setAttribute("aria-pressed", "false");
+  trackerBtn.addEventListener("click", () => {
+    if (!tracker.isOpen) {
+      if (calibration.isOpen) calibration.toggle(false);
+      if (fixtures.isOpen) fixtures.toggle(false);
+    }
+    tracker.toggle();
+    syncModes();
+  });
+  toolbar.append(trackerBtn);
   // os ✕ dos painéis fecham sem passar pelos botões
-  for (const r of [calibration.root, fixtures.root]) new MutationObserver(syncModes).observe(r, { attributes: true, attributeFilter: ["hidden"] });
+  for (const r of [calibration.root, fixtures.root, tracker.root]) new MutationObserver(syncModes).observe(r, { attributes: true, attributeFilter: ["hidden"] });
   activate(initial.name);
 
   // Coordenada em pixel do zoom máximo sob o cursor (base da calibração e dos fixtures).
@@ -113,6 +134,7 @@ async function start(): Promise<void> {
     markers,
     progress,
     fixtures,
+    tracker,
     mapData: { load: loadMapData, save: saveMapData, download: downloadMapData },
   };
 }

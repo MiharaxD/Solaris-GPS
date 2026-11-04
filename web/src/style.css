@@ -670,3 +670,94 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
 }
+
+/* ---- Tracker ---- */
+.trk-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+}
+
+.trk-grid label {
+  display: grid;
+  gap: 2px;
+  color: var(--muted);
+}
+
+.trk-grid input,
+.trk-grid select {
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--panel-fg);
+  font: inherit;
+}
+
+/* Prévia do recorte: sempre visível enquanto compartilha. */
+.trk-preview {
+  position: fixed;
+  left: 10px;
+  bottom: 34px;
+  z-index: 1000;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--panel-bg);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+.trk-preview[hidden] {
+  display: none;
+}
+
+.trk-preview canvas {
+  display: block;
+  width: 180px;
+  height: 180px;
+  background:
+    repeating-conic-gradient(#1b2a33 0 25%, #12202a 0 50%) 0 0 / 16px 16px;
+  border-radius: 4px;
+}
+
+.trk-stats {
+  max-width: 180px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ---- Laboratório (lab.html) ---- */
+body.lab {
+  height: auto;
+  overflow: auto;
+}
+
+.lab main {
+  padding: 16px;
+}
+
+.lab-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.lab-out {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.lab-out figure {
+  margin: 0;
+}
+
+.lab-out canvas {
+  display: block;
+  max-width: 100%;
+  background: #000;
+}
+
+.lab-info {
+  color: var(--muted);
+}
