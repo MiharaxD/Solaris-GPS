@@ -4,6 +4,8 @@
 Subcomandos:
     inventory                      resumo de todos os mapas do cache
     manifest <map_id> --name NOME  gera manifest.json a partir do disco (se faltar)
+    pyramid <map_id> --lo N        testa se zoom N == zoom N+1 reduzido
+    build                          tiles + zooms menores + maps.json em web/public/
 
 Convenção do cache (mesma do tools/wuwa_maps.py com --swap-xy):
     <cache>/<map_id>/<z>/<linha>_<coluna>.webp   (arquivo de 0 bytes = tile inexistente)
@@ -282,6 +284,111 @@ def _shifted_parent(map_dir: Path, hi: int, r: int, c: int, dr: int, dc: int,
     return np.concatenate([rgb, small[..., 3:4]], axis=2)
 
 
+MIN_GRID_TILES = 2  # zoom mínimo: o mapa inteiro cabe em ~2x2 tiles (1024 px)
+
+
+def _reduce_children(children: dict[tuple[int, int], Image.Image], size: tuple[int, int]) -> Image.Image:
+    """Monta 2x2 filhas (faltantes = preto, igual ao padding nativo) e reduz pra uma tile."""
+    w, h = size
+    big = Image.new("RGB", (2 * w, 2 * h), (0, 0, 0))
+    for (i, j), im in children.items():
+        big.paste(im, (j * w, i * h))
+    return big.resize(size, Image.Resampling.BOX)
+
+
+def build_map(map_dir: Path, out_root: Path, quality: int) -> dict:
+    """Copia as tiles reais e gera os zooms menores por redução 2x2→1.
+
+    Zoom nativo existente (ex.: z5 do Overworld) é preferido ao gerado. Retorna a entrada do maps.json.
+    """
+    import shutil
+
+    manifest = load_manifest(map_dir)
+    if manifest is None:
+        raise SystemExit(f"{map_dir.name} sem manifest. Rode: build_tiles.py manifest {map_dir.name} --name NOME")
+    if not manifest.get("first_number_is_row", False):
+        raise SystemExit(f"{map_dir.name}: first_number_is_row=false não suportado")
+    name: str = manifest["name"]
+    scans = scan_map(map_dir)
+    zmax = max(scans)
+    size = first_tile_size(map_dir, scans[zmax])
+    out = out_root / name
+
+    copied = generated = skipped = 0
+    current: set[tuple[int, int]] = set(scans[zmax].tiles)
+    for r, c in current:
+        src = map_dir / str(zmax) / f"{r}_{c}.webp"
+        dst = out / str(zmax) / f"{r}_{c}.webp"
+        if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+            skipped += 1
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        copied += 1
+
+    z = zmax
+    while True:
+        rows = max(r for r, _ in current) + 1
+        cols = max(c for _, c in current) + 1
+        if max(rows, cols) <= MIN_GRID_TILES or z == 0:
+            break
+        parent_z = z - 1
+        parents = {(r // 2, c // 2) for r, c in current}
+        native = scans.get(parent_z)
+        for pr, pc in sorted(parents):
+            dst = out / str(parent_z) / f"{pr}_{pc}.webp"
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if native and (pr, pc) in native.tiles:
+                src = map_dir / str(parent_z) / f"{pr}_{pc}.webp"
+                if not (dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime):
+                    shutil.copy2(src, dst)
+                    copied += 1
+                continue
+            kids = {
+                (i, j): out / str(z) / f"{2 * pr + i}_{2 * pc + j}.webp"
+                for i in (0, 1) for j in (0, 1)
+            }
+            kids = {k: p for k, p in kids.items() if p.exists()}
+            if dst.exists() and all(dst.stat().st_mtime >= p.stat().st_mtime for p in kids.values()):
+                skipped += 1
+                continue
+            children = {k: Image.open(p).convert("RGB") for k, p in kids.items()}
+            _reduce_children(children, size).save(dst, "WEBP", quality=quality, method=6)
+            generated += 1
+        current = parents
+        z = parent_z
+    zmin = z
+
+    top = scans[zmax]
+    (r0, r1), (c0, c1) = top.row_range, top.col_range
+    w, h = size
+    print(f"{name:<26} z{zmin}–z{zmax}  copiadas={copied} geradas={generated} já atualizadas={skipped}")
+    return {
+        "name": name,
+        "map_id": manifest["map_id"],
+        "tileSize": w,
+        "minZoom": zmin,
+        "maxZoom": zmax,
+        # limites em pixel do zoom máximo: x = coluna*tile, y = linha*tile
+        "bounds": {"x0": c0 * w, "y0": r0 * h, "x1": (c1 + 1) * w, "y1": (r1 + 1) * h},
+    }
+
+
+def cmd_build(cache: Path, out_root: Path, index_path: Path, only: list[str], quality: int) -> int:
+    entries = []
+    for map_dir in sorted(p for p in cache.iterdir() if p.is_dir()):
+        m = load_manifest(map_dir)
+        if only and (m is None or m["name"] not in only):
+            continue
+        entries.append(build_map(map_dir, out_root, quality))
+    entries.sort(key=lambda e: (e["name"] != "overworld", e["name"]))
+    if not only:
+        index_path.parent.mkdir(parents=True, exist_ok=True)
+        index_path.write_text(json.dumps({"maps": entries}, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"Índice salvo em {index_path} ({len(entries)} mapas)")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cache", type=Path, default=DEFAULT_CACHE)
@@ -296,11 +403,18 @@ def main(argv: list[str] | None = None) -> int:
     py.add_argument("map_id")
     py.add_argument("--lo", type=int, required=True)
     py.add_argument("--samples", type=int, default=40)
+    bd = sub.add_parser("build", help="copia tiles + gera zooms menores + maps.json para o web")
+    bd.add_argument("--out", type=Path, default=Path("web/public/tiles"))
+    bd.add_argument("--index", type=Path, default=Path("web/public/maps.json"))
+    bd.add_argument("--only", nargs="*", default=[], help="nomes de mapas (não reescreve o índice)")
+    bd.add_argument("--quality", type=int, default=90)
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     if args.cmd == "inventory":
         return cmd_inventory(args.cache, args.alpha)
+    if args.cmd == "build":
+        return cmd_build(args.cache, args.out, args.index, args.only, args.quality)
     if args.cmd == "pyramid":
         return cmd_pyramid(args.cache, args.map_id, args.lo, args.samples)
     return cmd_manifest(args.cache, args.map_id, args.name, args.force)
