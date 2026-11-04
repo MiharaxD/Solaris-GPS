@@ -17,7 +17,8 @@ o `py -3.12` não funciona (o 3.12 foi instalado pelo uv e não está registrado
 - Inventário dos mapas: `.venv/Scripts/python tools/build_tiles.py inventory`.
 - Dependências Python: `.venv/Scripts/python -m pip install -r tools/requirements.txt`.
 - Web: `npm --prefix web install`, `npm --prefix web run dev` (http://127.0.0.1:5173),
-  `npm --prefix web run typecheck` e `npm --prefix web test` (Vitest).
+  `npm --prefix web run typecheck`, `npm --prefix web test` (Vitest) e
+  `npm --prefix web run fixtures` (runner do tracker sobre os prints locais).
 - Tiles do web: `.venv/Scripts/python tools/build_tiles.py build`.
 
 **Só com pedido explícito do usuário:**

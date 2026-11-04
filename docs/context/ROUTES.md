@@ -62,7 +62,7 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Fixtures (ticket 15):** `web/src/fixturePanel.ts` (UI e formato `FixtureAnnotation`) e
   `web/server/fixturesPlugin.ts` (`/api/fixtures`, grava em `fixturesDir` do `config.json`,
   padrão `tracker/fixtures/`; testes em `fixturesPlugin.test.ts`).
-- A Fase 2 (tracker) começa em `web/src/tracker/` (planejado). No console do web, `window.solaris` expõe `view`,
+- No console do web, `window.solaris` expõe `view`,
   `calibration`, `markers`, `progress` e `mapData` pra depuração.
 
 ## Dados do mapa (`data/maps/<name>.json`) e API local
@@ -74,9 +74,18 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Cuidados:** a API só existe no `vite dev`. O CORS fica desligado no `vite.config.ts`. A
   pasta vem de `mapDataDir` no `config.json`.
 
-## Tracker no navegador *(planejado, Fases 2–3: tickets 17–28)*
-- Código em `web/src/tracker/` *(planejado)*: Worker de captura e processamento, com o mesmo
-  pipeline usado pelo runner de fixtures em Node/Vitest.
+## Tracker no navegador (Fases 2–3: tickets 17–28)
+- **Ir direto para:** `web/src/tracker/pipeline.ts` (`processFrame`, o mesmo no Worker e no
+  runner), `minimap.ts` (detecção e recorte), `image.ts` (RGBA/cinza, resize, embed),
+  `worker.ts` + `protocol.ts` e `web/src/trackerPanel.ts` (captura, prévia, ajuste salvo por
+  resolução). Padrões de tela/minimapa do `config.json` chegam via `define`
+  (`web/src/config.ts`).
+- **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`) e
+  `npm --prefix web run fixtures` (runner sobre `tracker/fixtures/` e `tracker/samples/`;
+  config em `web/vitest.fixtures.config.ts`; `SOLARIS_DUMP=<pasta>` grava os recortes).
+  Depuração visual: http://127.0.0.1:5173/lab.html.
+- **Cuidados:** o Vite não serve `tracker/` (fs restrito): no laboratório, abra o arquivo pelo
+  seletor. Prints e sprites nunca vão pro `web/public`.
 - Sprites em `tracker/icons/` e prints em `tracker/fixtures/` e `tracker/samples/` são do
   usuário (ignorados pelo git). Escala no minimapa a 1440p: Nexus ~34 px, teleporte ~14×34 px.
 - `config.json`: só os padrões (cache, `data/maps`, tela 2560×1440, minimapa). Os ajustes

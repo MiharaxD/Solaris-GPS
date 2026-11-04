@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09 e 11–15 feitos; esperando o checkpoint 🛑 16.
+**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Ticket 17 feito.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -32,6 +32,10 @@
 - Modo anotar fixture (ticket 15): botão "Fixture" grava print + anotação em
   `tracker/fixtures/` pela API local `/api/fixtures`. A captura da tela compartilhada fica
   pro ticket 17.
+- Tracker (ticket 17): botão "Tracker" compartilha a tela (só vídeo), acha o minimapa sozinho
+  (Hough no canto superior esquerdo) e mostra a prévia; ajuste manual salvo por resolução. Nas
+  amostras reais a detecção dá 99–100% em 1440p e 1080p. Ainda não testado num print real de
+  tela cheia nem no jogo ao vivo.
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
@@ -66,7 +70,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Checkpoint 🛑 16: demo da Fase 1 e aprovação do usuário. Depois, Fase 2 (tickets 17+). O ticket 10 (afim por área) fica
+- Ticket 18 (escala minimapa→mapa): precisa de fixtures reais com posição anotada. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).

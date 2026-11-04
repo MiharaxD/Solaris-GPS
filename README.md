@@ -87,6 +87,18 @@ Testes do web:
 npm --prefix web test
 ```
 
+### Tracker
+
+O botão **Tracker** compartilha a janela do jogo (o navegador pergunta qual) e recorta o
+minimapa; a prévia fica no canto inferior esquerdo. Pra testar o pipeline nos seus prints
+(anotados pelo botão **Fixture**, em `tracker/fixtures/`, fora do git):
+
+```bash
+npm --prefix web run fixtures
+```
+
+A página http://127.0.0.1:5173/lab.html mostra a detecção passo a passo.
+
 ## Configuração
 
 `config.json` (na raiz) guarda os padrões: o caminho do cache de tiles, a pasta
