@@ -1,0 +1,22 @@
+# Assets locais (© Kuro Games / tiles do th.gl) — nunca versionar
+assets/tiles_cache/
+assets/mapas/
+web/public/tiles/
+web/public/maps.json
+
+# Node
+node_modules/
+dist/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Dados de terceiros clonados localmente
+vendor/
+
+# SO / editor
+Thumbs.db
+.DS_Store
+.vscode/
