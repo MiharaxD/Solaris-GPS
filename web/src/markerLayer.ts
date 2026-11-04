@@ -10,6 +10,8 @@ export interface PlacedItem<T> {
   shape: Shape;
   /** Raio base em px de tela, no zoom nativo. */
   size: number;
+  /** Desenhado apagado (ex.: já encontrado). */
+  dim?: boolean;
 }
 
 const PANE = "solaris-markers";
@@ -128,12 +130,14 @@ export class MarkerCanvasLayer<T> extends L.Layer {
       const y = item.py * scale - oy;
       const r = item.size * k;
       if (x < -r || y < -r || x > size.x + r || y > size.y + r) continue;
+      ctx.globalAlpha = item.dim ? 0.3 : 1;
       ctx.fillStyle = item.color;
       drawShape(ctx, item.shape, x, y, r);
       ctx.fill();
       ctx.stroke();
       drawn.push({ item, x, y, r });
     }
+    ctx.globalAlpha = 1;
     const hl = this.highlight;
     if (hl) {
       const x = hl.px * scale - ox;

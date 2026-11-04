@@ -16,11 +16,17 @@ import {
   type GameMarker,
 } from "./markers";
 import type { MapInfo } from "./maps";
+import { loadMapData } from "./mapData";
+import { mapLabel } from "./mapPicker";
+import { parseBackup, percent, tallyMarkers, type ProgressStore, type Tally } from "./progress";
 import type { MapView } from "./mapView";
 import { loadPref, savePref } from "./storage";
 
 const FILTER_PREF = "markers.filter";
 const OPEN_PREF = "markers.open";
+const HIDE_FOUND_PREF = "markers.hideFound";
+
+const fmtTally = (t: Tally) => `${t.found}/${t.total}`;
 
 const SIZE: Record<string, number> = { nexus: 7, beacon: 6, chest: 5, casket: 5.5 };
 
@@ -47,8 +53,9 @@ export function savedTransform(data: MapDataV1 | null): Affine | null {
 }
 
 /**
- * Painel de marcadores: filtro por categoria/subcategoria, busca e popup ao clicar.
- * Recebe os dados do mapa (calibração e referências ignoradas) de quem os carrega.
+ * Painel de marcadores: filtro por categoria/subcategoria, busca, popup ao clicar e progresso
+ * (encontrados no IndexedDB; botão direito no marcador alterna). Recebe os dados do mapa
+ * (calibração e referências ignoradas) de quem os carrega.
  */
 export class MarkerPanel {
   readonly root: HTMLElement;
@@ -61,38 +68,87 @@ export class MarkerPanel {
   private filter: FilterState = parseFilter(loadPref(FILTER_PREF));
   private open = loadPref(OPEN_PREF) !== "0";
   private loadSeq = 0;
+  private hideFound = loadPref(HIDE_FOUND_PREF) === "1";
+  /** Grupos de subcategoria abertos (sobrevivem ao redesenho do painel). */
+  private openGroups = new Set<string>();
+  private maps: MapInfo[] = [];
   private readonly layer: MarkerCanvasLayer<GameMarker>;
 
   private readonly status = h("p", { className: "mk-status", role: "status" } as Partial<HTMLParagraphElement>);
   private readonly search = h("input", { type: "search", placeholder: "Buscar (ex.: baú premium jinzhou)…" });
   private readonly results = h("ul", { className: "mk-results" });
   private readonly cats = h("div", { className: "mk-cats" });
+  private readonly progressLine = h("p", { className: "mk-progress" });
+  private readonly hideFoundBox = h("input", { type: "checkbox" });
+  private readonly allMaps = h("details", { className: "mk-allmaps" });
+  private readonly allMapsList = h("ul", { className: "mk-allmaps-list" });
 
   constructor(
     private readonly view: MapView,
     /** true enquanto outro modo (calibração) usa os cliques no mapa. */
     private readonly busy: () => boolean,
+    private readonly progress: ProgressStore,
   ) {
     this.layer = new MarkerCanvasLayer(() => this.info?.maxZoom ?? 0);
     this.layer.addTo(view.leaflet);
     const close = h("button", { type: "button", className: "mk-close", textContent: "✕", title: "Fechar" });
     close.addEventListener("click", () => this.toggle(false));
     this.search.addEventListener("input", () => this.renderResults());
+    this.hideFoundBox.checked = this.hideFound;
+    this.hideFoundBox.addEventListener("change", () => {
+      this.hideFound = this.hideFoundBox.checked;
+      savePref(HIDE_FOUND_PREF, this.hideFound ? "1" : "0");
+      this.applyFilter();
+    });
+    this.allMaps.append(h("summary", { textContent: "Progresso em todos os mapas" }), this.allMapsList);
+    this.allMaps.addEventListener("toggle", () => {
+      if (this.allMaps.open) void this.renderAllMaps();
+    });
+
+    const backupBtn = h("button", { type: "button", className: "mk-btn", textContent: "Backup" });
+    backupBtn.title = "Baixa um JSON com todos os encontrados";
+    backupBtn.addEventListener("click", () => this.downloadBackup());
+    const file = h("input", { type: "file", accept: ".json,application/json", hidden: true });
+    file.addEventListener("change", () => {
+      const f = file.files?.[0];
+      file.value = "";
+      if (f) void this.restoreFrom(f);
+    });
+    const restoreBtn = h("button", { type: "button", className: "mk-btn", textContent: "Restaurar…" });
+    restoreBtn.title = "Substitui o progresso pelo de um backup";
+    restoreBtn.addEventListener("click", () => file.click());
+
     this.root = h(
       "aside",
       { className: "mk-panel", hidden: !this.open },
       h("header", {}, h("h2", { textContent: "Marcadores" }), close),
       this.status,
+      this.progressLine,
       this.search,
       this.results,
       this.cats,
+      h("label", { className: "mk-check" }, this.hideFoundBox, "Esconder encontrados"),
+      this.allMaps,
+      h("div", { className: "mk-actions" }, backupBtn, restoreBtn, file),
     );
+    progress.onChange(() => {
+      this.renderProgress();
+      this.renderCats();
+      this.applyFilter();
+      if (this.allMaps.open) void this.renderAllMaps();
+    });
 
     const map = view.leaflet;
     map.on("click", (e) => {
       if (this.busy()) return;
       const hit = this.layer.hitTest(e.containerPoint);
       if (hit) this.popup(hit);
+    });
+    // botão direito: alterna encontrado sem abrir popup
+    map.on("contextmenu", (e) => {
+      if (this.busy()) return;
+      const hit = this.layer.hitTest(e.containerPoint);
+      if (hit) void this.toggleFound(hit.data);
     });
     map.on("mousemove", (e) => {
       const hit = this.busy() ? null : this.layer.hitTest(e.containerPoint);
@@ -108,6 +164,11 @@ export class MarkerPanel {
     this.open = force ?? !this.open;
     this.root.hidden = !this.open;
     savePref(OPEN_PREF, this.open ? "1" : "0");
+  }
+
+  /** Lista de mapas, pro resumo de progresso de todos. */
+  setMaps(maps: MapInfo[]): void {
+    this.maps = maps;
   }
 
   async setMap(info: MapInfo): Promise<void> {
@@ -147,6 +208,7 @@ export class MarkerPanel {
       }
     }
     this.renderStatus();
+    this.renderProgress();
     this.renderCats();
     this.renderResults();
     this.applyFilter();
@@ -154,9 +216,11 @@ export class MarkerPanel {
 
   private applyFilter(): void {
     const visible = makeVisibility(this.filter, this.ignored);
+    const found = this.foundHere();
+    for (const p of this.placed.values()) p.dim = found.has(p.data.id);
     // ordem de desenho: categorias menos numerosas por cima (último desenhado fica no topo)
     const order = new Map(CATEGORIES.map((c, i) => [c.id, CATEGORIES.length - i]));
-    const items = [...this.placed.values()].filter((p) => visible(p.data));
+    const items = [...this.placed.values()].filter((p) => visible(p.data) && !(this.hideFound && p.dim));
     items.sort((a, b) => (order.get(a.data.cat) ?? 0) - (order.get(b.data.cat) ?? 0));
     this.layer.setItems(items);
   }
@@ -175,6 +239,77 @@ export class MarkerPanel {
     return [...s].sort();
   }
 
+  private foundHere(): ReadonlySet<string> {
+    return this.info ? this.progress.forMap(this.info.name) : new Set();
+  }
+
+  private async toggleFound(m: GameMarker): Promise<void> {
+    if (!this.info) return;
+    const value = !this.progress.isFound(this.info.name, m.id);
+    try {
+      await this.progress.setFound(this.info.name, m.id, value);
+    } catch (e) {
+      this.status.textContent = `Não salvou o progresso (${(e as Error).message}).`;
+    }
+  }
+
+  private renderProgress(): void {
+    if (!this.markers.length) {
+      this.progressLine.textContent = "";
+      return;
+    }
+    const { all } = tallyMarkers(this.markers, this.foundHere(), this.ignored);
+    this.progressLine.textContent = `Encontrados: ${fmtTally(all)} (${percent(all)})`;
+    if (!this.progress.persistent) this.progressLine.textContent += " · sem IndexedDB: não será salvo";
+  }
+
+  private async renderAllMaps(): Promise<void> {
+    const rows = await Promise.all(
+      this.maps.map(async (info) => {
+        const [markers, data] = await Promise.all([loadMarkers(info.name), loadMapData(info.name).catch(() => null)]);
+        const ign: unknown[] = Array.isArray(data?.ignoredRefs) ? data.ignoredRefs : [];
+        const ignored = new Set(ign.filter((x): x is string => typeof x === "string"));
+        return { info, t: tallyMarkers(markers, this.progress.forMap(info.name), ignored).all };
+      }),
+    );
+    this.allMapsList.replaceChildren(
+      ...rows
+        .filter((r) => r.t.total > 0)
+        .map((r) =>
+          h(
+            "li",
+            {},
+            h("span", { className: "mk-name", textContent: mapLabel(r.info.name) }),
+            h("span", { className: "mk-count", textContent: `${fmtTally(r.t)} · ${percent(r.t)}` }),
+          ),
+        ),
+    );
+  }
+
+  private downloadBackup(): void {
+    const b = this.progress.backup();
+    const blob = new Blob([JSON.stringify(b, null, 1) + "\n"], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `solaris-gps-backup-${b.exportedAt.slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  private async restoreFrom(file: File): Promise<void> {
+    try {
+      if (file.size > 20_000_000) throw new Error("arquivo grande demais");
+      const b = parseBackup(JSON.parse(await file.text()));
+      const n = Object.values(b.found).reduce((a, ids) => a + ids.length, 0);
+      const when = b.exportedAt ? ` (de ${b.exportedAt.slice(0, 10)})` : "";
+      if (!confirm(`Restaurar ${n} encontrados${when}? O progresso atual será substituído.`)) return;
+      await this.progress.restore(b);
+      this.status.textContent = `Restaurados ${n} encontrados.`;
+    } catch (e) {
+      this.status.textContent = `Backup inválido: ${(e as Error).message}.`;
+    }
+  }
+
   private renderStatus(): void {
     const name = this.info?.name ?? "";
     if (!this.markers.length) {
@@ -191,20 +326,14 @@ export class MarkerPanel {
   }
 
   private renderCats(): void {
-    const counts = new Map<string, Map<string, number>>();
-    for (const m of this.markers) {
-      if (this.ignored.has(m.id)) continue;
-      const subs = counts.get(m.cat) ?? new Map<string, number>();
-      subs.set(m.sub, (subs.get(m.sub) ?? 0) + 1);
-      counts.set(m.cat, subs);
-    }
+    const counts = tallyMarkers(this.markers, this.foundHere(), this.ignored).cats;
     const hiddenCats = new Set(this.filter.hiddenCats);
     const hiddenSubs = new Set(this.filter.hiddenSubs);
     const rows: HTMLElement[] = [];
     for (const c of CATEGORIES) {
-      const subs = counts.get(c.id);
-      if (!subs) continue;
-      const total = [...subs.values()].reduce((a, b) => a + b, 0);
+      const ct = counts.get(c.id);
+      if (!ct) continue;
+      const subs = ct.subs;
       const box = h("input", { type: "checkbox", checked: !hiddenCats.has(c.id) });
       box.addEventListener("change", () =>
         this.setFilter({ ...this.filter, hiddenCats: this.toggleIn(this.filter.hiddenCats, c.id, !box.checked) }),
@@ -215,15 +344,16 @@ export class MarkerPanel {
         box,
         swatch(c.shape, c.color),
         h("span", { className: "mk-name", textContent: c.label }),
-        h("span", { className: "mk-count", textContent: String(total) }),
+        h("span", { className: "mk-count", textContent: fmtTally(ct.tally) }),
       );
+      head.title = `${percent(ct.tally)} encontrados`;
       if (subs.size < 2) {
         rows.push(head);
         continue;
       }
       // subcategorias (tier do baú, espécie da planta…), mais numerosas primeiro
       const list = h("div", { className: "mk-subs" });
-      const sorted = [...subs.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      const sorted = [...subs.entries()].sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0]));
       for (const [sub, n] of sorted) {
         const key = `${c.id}/${sub}`;
         const sb = h("input", { type: "checkbox", checked: !hiddenSubs.has(key), disabled: hiddenCats.has(c.id) });
@@ -236,7 +366,7 @@ export class MarkerPanel {
             { className: "mk-sub" },
             sb,
             h("span", { className: "mk-name", textContent: subLabel({ cat: c.id, sub }) }),
-            h("span", { className: "mk-count", textContent: String(n) }),
+            h("span", { className: "mk-count", textContent: fmtTally(n) }),
           ),
         );
       }
@@ -249,7 +379,12 @@ export class MarkerPanel {
       none.addEventListener("click", () =>
         this.setFilter({ ...this.filter, hiddenSubs: [...new Set([...this.filter.hiddenSubs, ...keys])].sort() }),
       );
-      const details = h("details", { className: "mk-group" }, h("summary", {}, head), h("div", { className: "mk-sub-actions" }, all, none), list);
+      const details = h("details", { className: "mk-group", open: this.openGroups.has(c.id) },
+        h("summary", {}, head), h("div", { className: "mk-sub-actions" }, all, none), list);
+      details.addEventListener("toggle", () => {
+        if (details.open) this.openGroups.add(c.id);
+        else this.openGroups.delete(c.id);
+      });
       rows.push(details);
     }
     this.cats.replaceChildren(...rows);
@@ -297,6 +432,15 @@ export class MarkerPanel {
   private popup(item: PlacedItem<GameMarker>): void {
     const m = item.data;
     const sub = subLabel(m);
+    const map = this.info?.name ?? "";
+    const foundBtn = h("button", { type: "button", className: "mk-found-btn" });
+    const sync = () => {
+      const f = this.progress.isFound(map, m.id);
+      foundBtn.textContent = f ? "✓ Encontrado (desmarcar)" : "Marcar como encontrado";
+      foundBtn.classList.toggle("on", f);
+    };
+    sync();
+    foundBtn.addEventListener("click", () => void this.toggleFound(m).then(sync));
     const body = h(
       "div",
       { className: "mk-popup" },
@@ -304,6 +448,7 @@ export class MarkerPanel {
       h("div", { className: "mk-pop-cat", textContent: sub !== m.name ? `${category(m.cat).label} · ${sub}` : category(m.cat).label }),
       h("div", { textContent: m.area.join(" › ") || "Área desconhecida" }),
       h("div", { className: "mk-pop-coord", textContent: `jogo ${Math.round(m.x)}, ${Math.round(m.y)}, ${Math.round(m.z)}` }),
+      foundBtn,
     );
     this.layer.setHighlight(item);
     L.popup({ offset: [0, -4] })

@@ -482,3 +482,60 @@ body {
 .mk-pop-coord {
   color: #555;
 }
+
+.mk-progress {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mk-progress:empty {
+  display: none;
+}
+
+.mk-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.mk-allmaps summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.mk-allmaps-list {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mk-allmaps-list li {
+  display: flex;
+  gap: 8px;
+}
+
+.mk-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mk-btn,
+.mk-found-btn {
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.mk-found-btn {
+  margin-top: 6px;
+}
+
+.mk-found-btn.on {
+  border-color: #2f9e57;
+  background: #2f9e57;
+}

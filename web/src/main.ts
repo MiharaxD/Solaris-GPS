@@ -7,6 +7,7 @@ import { loadPref, savePref } from "./storage";
 import { downloadMapData, loadMapData, saveMapData } from "./mapData";
 import { CalibrationPanel } from "./calibration";
 import { MarkerPanel } from "./markerPanel";
+import { ProgressStore } from "./progress";
 
 const ACTIVE_MAP_PREF = "activeMap";
 
@@ -27,7 +28,9 @@ async function start(): Promise<void> {
   if (!initial) return;
 
   const calibration = new CalibrationPanel(view);
-  const markers = new MarkerPanel(view, () => calibration.isOpen);
+  const progress = await ProgressStore.open();
+  const markers = new MarkerPanel(view, () => calibration.isOpen, progress);
+  markers.setMaps(maps);
   calibration.onData = (map, data) => markers.setMapData(map, data);
   document.body.append(calibration.root, markers.root);
   const toolbar = el<HTMLDivElement>("toolbar");
@@ -81,6 +84,7 @@ async function start(): Promise<void> {
     view,
     calibration,
     markers,
+    progress,
     mapData: { load: loadMapData, save: saveMapData, download: downloadMapData },
   };
 }
