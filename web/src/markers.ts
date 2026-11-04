@@ -13,6 +13,11 @@ export interface GameMarker {
   y: number;
   z: number;
   area: string[];
+  /** Marcadores manuais já vêm em pixel do zoom máximo (sem calibração). */
+  px?: [number, number];
+  note?: string;
+  /** "map" = arquivo do mapa (teleportes do tracker), "personal" = IndexedDB. Ausente = WutheringData. */
+  source?: "map" | "personal";
 }
 
 export type Shape = "diamond" | "hexagon" | "square" | "triangle" | "circle";
@@ -45,7 +50,11 @@ export const CATEGORIES: readonly Category[] = [
   { id: "plant", label: "Plantas", color: "#7bd389", shape: "circle", defaultOn: false },
   { id: "ore", label: "Minérios", color: "#e0a36b", shape: "circle", defaultOn: false },
   { id: "collectible", label: "Outros coletáveis", color: "#f78fb3", shape: "circle", defaultOn: false },
+  { id: "personal", label: "Pessoais", color: "#ffffff", shape: "circle", defaultOn: true },
 ];
+
+/** Categorias que viram referência do tracker e vão pro arquivo do mapa (não pro IndexedDB). */
+export const MAP_FILE_CATS: ReadonlySet<string> = new Set(["beacon", "nexus"]);
 
 const BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
 const FALLBACK: Category = { id: "?", label: "Outros", color: "#9fb0bc", shape: "circle", defaultOn: false };
@@ -96,7 +105,7 @@ export function fold(s: string): string {
 }
 
 export function markerText(m: GameMarker): string {
-  return fold([m.name, subLabel(m), category(m.cat).label, ...m.area].join(" "));
+  return fold([m.name, subLabel(m), category(m.cat).label, ...m.area, m.note ?? ""].join(" "));
 }
 
 /**

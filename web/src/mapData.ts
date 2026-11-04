@@ -2,6 +2,8 @@
  * Dados versionados de cada mapa (data/maps/<name>.json), lidos e gravados pela API local do
  * servidor do Vite (web/server/mapDataPlugin.ts). O formato cresce nos tickets 09+.
  */
+import { asManualMarker, type ManualMarker } from "./progress";
+
 export type MapData = Record<string, unknown>;
 
 /** Um ponto de calibração: coordenada de jogo ↔ pixel do zoom máximo. */
@@ -27,6 +29,14 @@ export interface MapDataV1 extends MapData {
   calibration?: Calibration;
   /** Referências do WutheringData que não existem neste mapa no jogo (ids, ex.: "tp-315005"). */
   ignoredRefs?: string[];
+  /** Teleportes/Nexus cadastrados à mão (pixel do zoom máximo), referência do tracker. */
+  manualMarkers?: ManualMarker[];
+}
+
+/** Marcadores manuais válidos do arquivo do mapa. */
+export function manualMarkersOf(data: MapData | null): ManualMarker[] {
+  const list = data?.manualMarkers;
+  return Array.isArray(list) ? list.map(asManualMarker).filter((m): m is ManualMarker => m !== null) : [];
 }
 
 function isPoint(v: unknown): v is CalibrationPoint {
@@ -71,6 +81,16 @@ export async function saveMapData(map: string, data: MapData): Promise<string> {
   });
   if (!res.ok) throw new Error(await errorText(res));
   return ((await res.json()) as { path: string }).path;
+}
+
+/**
+ * Lê o arquivo do mapa do disco, aplica `patch` por cima e grava. Usado por quem só mexe em
+ * uma parte (ex.: marcadores manuais) sem levar junto pontos de calibração não salvos.
+ */
+export async function patchMapData(map: string, patch: Partial<MapDataV1>): Promise<MapDataV1> {
+  const merged: MapDataV1 = { ...asMapDataV1(await loadMapData(map)), ...patch, version: 1 };
+  await saveMapData(map, merged);
+  return merged;
 }
 
 /** Alternativa quando a API não está disponível (ex.: build estático): baixa o JSON. */

@@ -539,3 +539,45 @@ body {
   border-color: #2f9e57;
   background: #2f9e57;
 }
+
+.leaflet-container.mk-placing {
+  cursor: crosshair;
+}
+
+.mk-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mk-form {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.mk-form label {
+  display: grid;
+  gap: 2px;
+}
+
+.mk-form input,
+.mk-form select,
+.mk-form textarea {
+  font: inherit;
+  padding: 4px 6px;
+}
+
+.mk-form .mk-btn {
+  background: #1d3442;
+}
+
+.mk-form-hint,
+.mk-pop-note {
+  margin: 0;
+  color: #555;
+  font-size: 12px;
+}
+
+.mk-popup .mk-link {
+  color: #1a6fb5 !important;
+}

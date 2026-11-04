@@ -141,6 +141,11 @@ export class CalibrationPanel {
     }
   }
 
+  /** Outro painel gravou campos do arquivo do mapa: mantém a cópia local em dia. */
+  mergeExternal(map: string, patch: Partial<MapDataV1>): void {
+    if (this.info?.name === map) this.data = { ...this.data, ...patch };
+  }
+
   /** Pergunta antes de descartar pontos não salvos. false = não trocar de mapa. */
   canLeave(): boolean {
     return !this.dirty || !this.info || confirm(`Há pontos de calibração não salvos em ${this.info.name}. Descartar?`);

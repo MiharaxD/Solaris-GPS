@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { BACKUP_FORMAT, makeBackup, parseBackup, percent, tallyMarkers } from "./progress";
+import { BACKUP_FORMAT, asManualMarker, makeBackup, parseBackup, percent, tallyMarkers } from "./progress";
 
 describe("backup", () => {
   it("ida e volta preserva os encontrados", () => {
-    const b = makeBackup(new Map([["overworld", new Set(["e2", "e1"])], ["vazio", new Set<string>()]]), new Date(0));
+    const b = makeBackup(new Map([["overworld", new Set(["e2", "e1"])], ["vazio", new Set<string>()]]), new Map(), new Date(0));
     expect(b.found).toEqual({ overworld: ["e1", "e2"] });
     expect(parseBackup(JSON.parse(JSON.stringify(b)))).toEqual(b);
   });
@@ -38,5 +38,27 @@ describe("tallyMarkers", () => {
     expect(cats.has("beacon")).toBe(false);
     expect(percent(all)).toBe("66%");
     expect(percent({ found: 0, total: 0 })).toBe("–");
+  });
+});
+
+describe("marcadores pessoais no backup", () => {
+  const pm = { id: "p-1", cat: "personal", name: "Baú escondido", px: [10, 20] as [number, number], note: "atrás da pedra" };
+
+  it("vai e volta no backup", () => {
+    const b = makeBackup(new Map(), new Map([["overworld", new Map([["p-1", pm]])]]), new Date(0));
+    expect(b.personal).toEqual({ overworld: [pm] });
+    expect(parseBackup(JSON.parse(JSON.stringify(b))).personal).toEqual({ overworld: [pm] });
+  });
+
+  it("backup sem pessoais continua válido e pessoal inválido é recusado", () => {
+    expect(parseBackup({ format: BACKUP_FORMAT, version: 1, found: {} }).personal).toBeUndefined();
+    const bad = { format: BACKUP_FORMAT, version: 1, found: {}, personal: { overworld: [{ ...pm, px: [1, "x"] }] } };
+    expect(() => parseBackup(bad)).toThrow(/pessoal inválido/);
+  });
+
+  it("asManualMarker limpa e valida", () => {
+    expect(asManualMarker({ ...pm, extra: 1 })).toEqual(pm);
+    expect(asManualMarker({ ...pm, cat: "<script>" })).toBeNull();
+    expect(asManualMarker({ ...pm, px: [NaN, 1] })).toBeNull();
   });
 });

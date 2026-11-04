@@ -4,7 +4,7 @@ import { loadMaps, type MapInfo } from "./maps";
 import { MapView } from "./mapView";
 import { createMapPicker } from "./mapPicker";
 import { loadPref, savePref } from "./storage";
-import { downloadMapData, loadMapData, saveMapData } from "./mapData";
+import { downloadMapData, loadMapData, patchMapData, saveMapData } from "./mapData";
 import { CalibrationPanel } from "./calibration";
 import { MarkerPanel } from "./markerPanel";
 import { ProgressStore } from "./progress";
@@ -29,7 +29,11 @@ async function start(): Promise<void> {
 
   const calibration = new CalibrationPanel(view);
   const progress = await ProgressStore.open();
-  const markers = new MarkerPanel(view, () => calibration.isOpen, progress);
+  const markers = new MarkerPanel(view, () => calibration.isOpen, progress, async (map, patch) => {
+    const merged = await patchMapData(map, patch);
+    calibration.mergeExternal(map, patch);
+    markers.setMapData(map, merged);
+  });
   markers.setMaps(maps);
   calibration.onData = (map, data) => markers.setMapData(map, data);
   document.body.append(calibration.root, markers.root);
