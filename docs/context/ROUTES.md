@@ -59,14 +59,17 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   decide o que vai pro arquivo do mapa.
 - **Importador do th.gl (ticket 14):** `web/src/thglImport.ts` (parser e casamento; testes em
   `thglImport.test.ts`) e `web/src/importDialog.ts` (diálogo de prévia).
-- Ticket 15 segue daqui. No console do web, `window.solaris` expõe `view`,
+- **Fixtures (ticket 15):** `web/src/fixturePanel.ts` (UI e formato `FixtureAnnotation`) e
+  `web/server/fixturesPlugin.ts` (`/api/fixtures`, grava em `fixturesDir` do `config.json`,
+  padrão `tracker/fixtures/`; testes em `fixturesPlugin.test.ts`).
+- A Fase 2 (tracker) começa em `web/src/tracker/` (planejado). No console do web, `window.solaris` expõe `view`,
   `calibration`, `markers`, `progress` e `mapData` pra depuração.
 
 ## Dados do mapa (`data/maps/<name>.json`) e API local
 - **Ir direto para:** `web/server/mapData.ts` (validação de nome contra o `maps.json` e
-  escrita atômica), `web/server/mapDataPlugin.ts` (GET/PUT `/api/map-data/<name>`, checando
-  Host, Origin e o header `X-Solaris-Client`) e `web/src/mapData.ts` (cliente e fallback de
-  download).
+  escrita atômica), `web/server/mapDataPlugin.ts` (GET/PUT `/api/map-data/<name>`),
+  `web/server/guards.ts` (Host, Origin e o header `X-Solaris-Client`, comuns às APIs locais) e
+  `web/src/mapData.ts` (cliente, `patchMapData` e fallback de download).
 - **Testar:** `npm --prefix web test` (`web/server/mapDataPlugin.test.ts`).
 - **Cuidados:** a API só existe no `vite dev`. O CORS fica desligado no `vite.config.ts`. A
   pasta vem de `mapDataDir` no `config.json`.

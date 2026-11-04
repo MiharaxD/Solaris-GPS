@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09 e 11–14 feitos.
+**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09 e 11–15 feitos; esperando o checkpoint 🛑 16.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -29,6 +29,9 @@
   teleportes do tracker vão ter de ser cadastrados assim.
 - Importador do th.gl (ticket 14): testado só com dados sintéticos. A escala real do backup
   do th.gl ainda não foi vista (o importador detecta cm/m e eixos trocados).
+- Modo anotar fixture (ticket 15): botão "Fixture" grava print + anotação em
+  `tracker/fixtures/` pela API local `/api/fixtures`. A captura da tela compartilhada fica
+  pro ticket 17.
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
@@ -63,7 +66,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 15 (modo anotar fixture); depois o checkpoint 🛑 16. O ticket 10 (afim por área) fica
+- Checkpoint 🛑 16: demo da Fase 1 e aprovação do usuário. Depois, Fase 2 (tickets 17+). O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
@@ -72,7 +75,7 @@
 - Salvar como arquivo em `tracker/icons/` os sprites recortados do minimapa (o usuário mandou
   no chat, mas só como imagem anexada). Escala observada no minimapa a 1440p: Nexus ~34 px,
   teleporte ~14×34 px. Falta também o sprite da seta.
-- Prints de tela cheia pros fixtures (Fase 2) e a escala de UI. Resolução: 2560×1440.
+- Prints de tela cheia anotados pelo botão "Fixture" (Fase 2) e a escala de UI. Resolução: 2560×1440.
 - Teleportes à mão nos 3 mapas sem dados (pelo "+ Novo marcador").
 
 ## Limitações conhecidas
