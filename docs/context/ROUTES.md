@@ -57,7 +57,9 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   (`openForm`, `saveManual`, `setMode`); `manualMarkersOf`/`patchMapData` em `mapData.ts`;
   pessoais em `ProgressStore` (`putPersonal`/`deletePersonal`). `MAP_FILE_CATS` (markers.ts)
   decide o que vai pro arquivo do mapa.
-- Tickets 14–15 seguem daqui. No console do web, `window.solaris` expõe `view`,
+- **Importador do th.gl (ticket 14):** `web/src/thglImport.ts` (parser e casamento; testes em
+  `thglImport.test.ts`) e `web/src/importDialog.ts` (diálogo de prévia).
+- Ticket 15 segue daqui. No console do web, `window.solaris` expõe `view`,
   `calibration`, `markers`, `progress` e `mapData` pra depuração.
 
 ## Dados do mapa (`data/maps/<name>.json`) e API local

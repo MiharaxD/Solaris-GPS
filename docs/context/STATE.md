@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09 e 11–13 feitos.
+**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09 e 11–14 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -27,6 +27,8 @@
 - Marcadores manuais (ticket 13): teleporte/Nexus em `data/maps` (`manualMarkers`, px), os
   outros no IndexedDB e no backup. Nos 3 mapas sem dados (honami, dimmr, mengzhou), os
   teleportes do tracker vão ter de ser cadastrados assim.
+- Importador do th.gl (ticket 14): testado só com dados sintéticos. A escala real do backup
+  do th.gl ainda não foi vista (o importador detecta cm/m e eixos trocados).
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
@@ -61,7 +63,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 14 (importador do backup do th.gl); depois 15 e o checkpoint 🛑 16. O ticket 10 (afim por área) fica
+- Ticket 15 (modo anotar fixture); depois o checkpoint 🛑 16. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).

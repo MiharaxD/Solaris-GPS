@@ -73,6 +73,11 @@
 - **Fixtures são anotados clicando no mapa web** (ticket 15), a partir de um print ou do
   frame atual da tela compartilhada. Por quê: o WuWa não mostra coordenada na tela.
 
+- **O importador do th.gl casa em coordenada de jogo**, não em pixel: compara direto com o
+  `Transform` dos marcadores do WutheringData, então o erro da calibração não entra. Ele
+  importa pro mapa ativo (o arquivo não diz o mapa) e descobre sozinho a escala (cm/m) e a
+  ordem dos eixos pelo maior número de casamentos.
+
 - **O mapa ativo é escolhido à mão no web.** Detecção automática de mapa fica fora até o
   usuário pedir. A recuperação manual é o "Find me": clicar onde está pra recomeçar o
   rastreio.
