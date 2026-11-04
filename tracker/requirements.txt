@@ -1,7 +1,0 @@
-# Tracker e ferramentas (Python 3.11). Instale com:
-#   .venv/Scripts/python -m pip install -r tracker/requirements.txt
-pillow
-numpy
-websockets>=14
-pytest
-pytest-asyncio

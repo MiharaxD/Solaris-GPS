@@ -1,7 +1,18 @@
+/// <reference types="vitest/config" />
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { mapDataPlugin } from "./server/mapDataPlugin";
 
-// Só localhost: nada do app fica exposto na rede.
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const config = JSON.parse(readFileSync(path.join(repoRoot, "config.json"), "utf8")) as { mapDataDir?: string };
+
+// Só localhost: nada do app fica exposto na rede. CORS desligado: nenhum outro site
+// consegue chamar a API local (/api/map-data) a partir do navegador.
 export default defineConfig({
-  server: { host: "127.0.0.1", port: 5173, strictPort: true },
-  preview: { host: "127.0.0.1", port: 4173, strictPort: true },
+  plugins: [mapDataPlugin({ root: repoRoot, mapDataDir: config.mapDataDir ?? "data/maps" })],
+  server: { host: "127.0.0.1", port: 5173, strictPort: true, cors: false },
+  preview: { host: "127.0.0.1", port: 4173, strictPort: true, cors: false },
+  test: { include: ["server/**/*.test.ts", "src/**/*.test.ts"] },
 });

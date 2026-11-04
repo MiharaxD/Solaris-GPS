@@ -4,7 +4,7 @@ import { loadMaps, type MapInfo } from "./maps";
 import { MapView } from "./mapView";
 import { createMapPicker } from "./mapPicker";
 import { loadPref, savePref } from "./storage";
-import { TrackerClient, type TrackerStatus } from "./tracker";
+import { downloadMapData, loadMapData, saveMapData } from "./mapData";
 
 const ACTIVE_MAP_PREF = "activeMap";
 
@@ -24,47 +24,28 @@ async function start(): Promise<void> {
   const initial = (saved && byName.get(saved)) || maps[0];
   if (!initial) return;
 
-  const tracker = new TrackerClient();
-  const toolbar = el<HTMLDivElement>("toolbar");
-
   const activate = (name: string): void => {
     const info = byName.get(name);
     if (!info) return;
     view.show(info);
     savePref(ACTIVE_MAP_PREF, name);
-    tracker.setActiveMap(name);
     hud.textContent = "";
   };
 
-  createMapPicker(toolbar, maps, initial.name, activate);
-  toolbar.append(createTrackerBadge(tracker));
+  createMapPicker(el<HTMLDivElement>("toolbar"), maps, initial.name, activate);
   activate(initial.name);
-  tracker.start();
-  // Exposto só para depuração no console do navegador.
-  (window as unknown as { solaris?: unknown }).solaris = { tracker, view };
 
   // Coordenada em pixel do zoom máximo sob o cursor (base da calibração e dos fixtures).
   view.leaflet.on("mousemove", (e) => {
     const p = view.toPixel(e.latlng);
     hud.textContent = `px ${Math.round(p.x)}, ${Math.round(p.y)}`;
   });
-}
 
-const STATUS_TEXT: Record<TrackerStatus, string> = {
-  connected: "Tracker conectado",
-  connecting: "Conectando ao tracker…",
-  disconnected: "Tracker desligado",
-};
-
-function createTrackerBadge(tracker: TrackerClient): HTMLElement {
-  const badge = document.createElement("span");
-  badge.className = "tracker-badge";
-  badge.setAttribute("role", "status");
-  tracker.onStatus((s) => {
-    badge.dataset.status = s;
-    badge.textContent = STATUS_TEXT[s];
-  });
-  return badge;
+  // Exposto só para depuração no console do navegador.
+  (window as unknown as { solaris?: unknown }).solaris = {
+    view,
+    mapData: { load: loadMapData, save: saveMapData, download: downloadMapData },
+  };
 }
 
 start().catch((err: unknown) => {
