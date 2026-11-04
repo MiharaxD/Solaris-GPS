@@ -11,9 +11,9 @@ navegador. É um projeto pessoal e não comercial, feito pra Windows 10/11 com C
 
 ## Estado
 
-Em desenvolvimento. Hoje o mapa web mostra os 10 mapas a partir das tiles locais. O
-tracker (compartilhar tela), os marcadores e o progresso ainda estão por vir (veja
-`docs/context/STATE.md`).
+Em desenvolvimento. Hoje o mapa web mostra os 10 mapas a partir das tiles locais, com
+calibração e marcadores (teleportes, baús, coletáveis) filtráveis e com busca. O tracker
+(compartilhar tela) e o progresso ainda estão por vir (veja `docs/context/STATE.md`).
 
 ## Requisitos
 
@@ -56,6 +56,22 @@ Outros comandos úteis:
 ```bash
 .venv/Scripts/python tools/build_tiles.py pyramid <map_id> --lo 5
 ```
+
+### Marcadores (opcional)
+
+Os marcadores vêm do [WutheringData](https://github.com/Dimbreath/WutheringData), clonado
+por você em `vendor/WutheringData`. Eles são gerados localmente e nunca vão pro repositório:
+
+```bash
+.venv/Scripts/python tools/extract_refs.py
+```
+
+```bash
+.venv/Scripts/python tools/extract_markers.py
+```
+
+O primeiro gera as referências da calibração (`web/public/refs/`) e o segundo, os marcadores
+(`web/public/markers/`). Um mapa só mostra marcadores depois de calibrado (3+ pontos).
 
 ## Rodar o mapa web
 

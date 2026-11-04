@@ -46,8 +46,12 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `web/src/autoCalib.ts` (máscara de terra + busca das 8 orientações), `web/src/affine.ts`
   (afim/similaridade normalizadas, inversa, `anchorAt`; testes em `affine.test.ts`) e
   `web/src/refs.ts` (lê `/refs/<name>.json`).
-- Tickets 10–15 seguem daqui. No console do web, `window.solaris` expõe `view` e `mapData`
-  pra depuração.
+- **Marcadores (ticket 11):** `web/src/markers.ts` (categorias, cores, filtro, busca;
+  testes em `markers.test.ts`), `web/src/markerLayer.ts` (canvas único num pane próprio, hit
+  test) e `web/src/markerPanel.ts` (painel, popup; recebe a calibração via
+  `CalibrationPanel.onData`). Zoom do Leaflet fica no canto inferior direito.
+- Tickets 12–15 seguem daqui. No console do web, `window.solaris` expõe `view`,
+  `calibration`, `markers` e `mapData` pra depuração.
 
 ## Dados do mapa (`data/maps/<name>.json`) e API local
 - **Ir direto para:** `web/server/mapData.ts` (validação de nome contra o `maps.json` e
@@ -82,7 +86,10 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Não precisa ler:** `LevelEntityConfig.json` sem sufixo (dump antigo).
 - **Arquivo grande:** os `LevelEntityConfig_*` têm 70–85 MB. Carregue via script e nunca
   leia direto.
-- A saída gerada no ticket 11 não é commitada (adicionar a pasta ao `.gitignore`).
+- **Gerar marcadores:** `.venv/Scripts/python tools/extract_markers.py` grava
+  `web/public/markers/<name>.json` (ignorado pelo git). Categoria = `BlueprintConfig.json`
+  (`BlueprintType` → `EntityType`) + nome chinês da entidade; espécie traduzida por
+  `TextMap/zh-Hans/MultiText.json`/`ItemInfo.json` (mesmas chaves do en/pt).
 
 ## Pop-out *(planejado, Fase 4)*
 - Ticket 30: Document Picture-in-Picture (Chrome/Edge). Sem Tauri e sem Rust.
@@ -98,6 +105,8 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 | `web/server/mapDataPlugin.ts` | API local `/api/map-data` |
 | `config.json` | Padrões: caminhos, tela, minimapa |
 | `tools/extract_refs.py` | Teleportes/Nexus do WutheringData → `web/public/refs/` |
+| `tools/extract_markers.py` | Marcadores por categoria → `web/public/markers/` |
+| `web/src/markerPanel.ts` | Painel de marcadores (filtro, busca, popup) |
 | `web/src/calibration.ts` | Painel de calibração jogo→pixel |
 | `assets/tiles_cache/*/manifest.json` | Metadados de cada mapa (zooms, limites) |
 | `.gitignore` | Garante que assets e dados de terceiros fiquem fora |

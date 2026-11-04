@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 1 em andamento. Fase 0 aprovada. Ticket 05 feito (mapa web mostra o Overworld).
+**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09 e 11 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -10,11 +10,16 @@
   referências em terra, orientação direta X→x, Y→y, ~0,5 s), e o usuário corrige 2–3 bolinhas
   comparando com o mapa do jogo. Calibrados pelo usuário (`data/maps/`): overworld (9 pontos,
   RMS 3,5 px, cobrindo Huanglong e Rinascita), lahai-roi (2,1), avinoleum (2,4), tethys-deep
-  (1,4) e vault-underground (0,5). Falta o fabricatorium (usar "Ignorar" nos 2 do Energy Hub).
+  (1,4), vault-underground (0,5) e fabricatorium (6 pontos, 4,4).
   honami-city, dimmr-plains, simulacrum-nexus-mengzhou e chronorift-metropolis (1 Nexus) não
   têm referências suficientes. Não precisam de calibração pro tracker (que trabalha em pixel);
   ela só faria falta pra importar coordenadas de jogo.
 - `tools/extract_refs.py` → `web/public/refs/` (7 mapas; os outros 3 não têm dados).
+- Marcadores (ticket 11): `tools/extract_markers.py` → `web/public/markers/`. Overworld: 175
+  teleportes, 33 Nexus, 2380 baús, 238 caskets, 10205 plantas, 2593 minérios e 2751 outros
+  coletáveis. Painel "Marcadores" com filtro por categoria/subcategoria (salvo no
+  localStorage), busca sem acento e popup. Plantas, minérios e coletáveis começam desligados.
+  A contagem de baús inclui os que só aparecem após puzzle/desafio ("玩法刷新", "程序封锁").
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
@@ -49,7 +54,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 11 (marcadores do WutheringData); depois 12–15. O ticket 10 (afim por área) fica
+- Ticket 12 (encontrado/progresso no IndexedDB); depois 13–15. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
@@ -67,3 +72,5 @@
 - No navegador, a frequência do rastreio e o comportamento com a aba em segundo plano ainda
   não foram medidos. O Genshin muda o zoom do minimapa em cidades; não verificado no WuWa.
 - Os dados de entidades podem não bater com a versão atual do jogo (dump de março de 2026).
+- Categoria "Sonance Casket" inferida pelos blueprints `HookSoundBox`/`HookPullSoundBox`; não
+  conferida no jogo. Nomes de espécie saem em inglês (o TextMap pt não tem essas chaves).
