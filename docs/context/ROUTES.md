@@ -41,7 +41,10 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Cuidados:** o template de tile é `/tiles/<name>/{z}/{y}_{x}.webp` (y = linha). Os
   `bounds` do tile layer evitam 404 fora da grade. Leaflet 1.9 e TypeScript 7 em strict.
 - **Não precisa ler:** `web/public/tiles/`, `web/public/maps.json` (gerados) e `web/dist/`.
-- Tickets 09–15 seguem daqui. No console do web, `window.solaris` expõe `view` e `mapData`
+- **Calibração (ticket 09):** `web/src/calibration.ts` (painel, pontos arrastáveis, vetor de
+  erro, previsão das outras referências), `web/src/affine.ts` (ajuste normalizado, inversa e
+  resíduos; testes em `affine.test.ts`) e `web/src/refs.ts` (lê `/refs/<name>.json`).
+- Tickets 10–15 seguem daqui. No console do web, `window.solaris` expõe `view` e `mapData`
   pra depuração.
 
 ## Dados do mapa (`data/maps/<name>.json`) e API local
@@ -70,7 +73,10 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `Transform[0]`.
 - Mapa: `AkiMapSource.json` (`MapPath` termina no prefixo do `map_id` das tiles, ex.
   `.../AkiWorld_WP`), `AkiMap.json`, `MultiMap.json` (andares).
-- Textos: `TextMap/<lang>/MultiText.json` (24 MB em `en`, ainda não baixado).
+- Textos: `TextMap/en|pt/MultiText.json` (o pt só tem parte das chaves). Nome de área:
+  `Area.json` (`Title`, `Father`).
+- **Gerar referências:** `.venv/Scripts/python tools/extract_refs.py` grava
+  `web/public/refs/<name>.json` (teleportes e Nexus com coordenadas e área; ignorado pelo git).
 - **Não precisa ler:** `LevelEntityConfig.json` sem sufixo (dump antigo).
 - **Arquivo grande:** os `LevelEntityConfig_*` têm 70–85 MB. Carregue via script e nunca
   leia direto.
@@ -89,5 +95,7 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 | `web/src/mapView.ts` | Leaflet e conversão pixel↔latlng |
 | `web/server/mapDataPlugin.ts` | API local `/api/map-data` |
 | `config.json` | Padrões: caminhos, tela, minimapa |
+| `tools/extract_refs.py` | Teleportes/Nexus do WutheringData → `web/public/refs/` |
+| `web/src/calibration.ts` | Painel de calibração jogo→pixel |
 | `assets/tiles_cache/*/manifest.json` | Metadados de cada mapa (zooms, limites) |
 | `.gitignore` | Garante que assets e dados de terceiros fiquem fora |

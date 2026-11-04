@@ -6,6 +6,10 @@
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
   `web/public/tiles` z1..zmax e `maps.json` pros 10 mapas; incremental) e `slice` (imagem única →
   tiles + manifest; preserva alpha).
+- Calibração afim por mapa (ticket 09): botão "Calibrar" → escolher teleporte/Nexus do
+  WutheringData (ou X/Y) → clicar no mapa. Mostra resíduo por ponto, RMS e onde as outras
+  referências cairiam. Ainda **nenhum mapa foi calibrado de verdade** (precisa do usuário).
+- `tools/extract_refs.py` → `web/public/refs/` (7 mapas; os outros 3 não têm dados).
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
@@ -40,7 +44,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 09 (calibração afim por mapa); depois 10, 11, 13 e 15. Tickets 08, 15 e 17–30 foram
+- Ticket 10 (calibração por área no Overworld); depois 11, 13 e 15. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
 
 ## Depende do usuário

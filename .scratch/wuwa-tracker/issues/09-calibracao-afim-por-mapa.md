@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Afim por mínimos quadrados com 3+ pontos, resíduo por ponto em pixels
-- [ ] Adicionar/remover/editar pontos
-- [ ] Salvar pela API local (/api/map-data); fallback de download do JSON
-- [ ] Dados de calibração carregados do arquivo ao abrir o mapa
+- [x] Afim por mínimos quadrados com 3+ pontos, resíduo por ponto em pixels
+- [x] Adicionar/remover/editar pontos
+- [x] Salvar pela API local (/api/map-data); fallback de download do JSON
+- [x] Dados de calibração carregados do arquivo ao abrir o mapa
