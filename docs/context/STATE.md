@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09 e 11 feitos.
+**Fase:** Fase 1 em andamento. Fase 0 aprovada. Tickets 05–09, 11 e 12 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -20,6 +20,10 @@
   coletáveis. Painel "Marcadores" com filtro por categoria/subcategoria (salvo no
   localStorage), busca sem acento e popup. Plantas, minérios e coletáveis começam desligados.
   A contagem de baús inclui os que só aparecem após puzzle/desafio ("玩法刷新", "程序封锁").
+- Progresso (ticket 12): encontrados no IndexedDB do navegador (popup ou botão direito),
+  contagem x/y por categoria, por mapa e de todos os mapas, "Esconder encontrados" e
+  Backup/Restaurar em JSON. Os ids (`e<EntityId>`, `tp-<Id>`) precisam ficar estáveis entre
+  regenerações dos marcadores, senão o progresso se perde.
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
@@ -54,7 +58,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 12 (encontrado/progresso no IndexedDB); depois 13–15. O ticket 10 (afim por área) fica
+- Ticket 13 (editor de marcadores manuais); depois 14 (importador th.gl) e 15. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).

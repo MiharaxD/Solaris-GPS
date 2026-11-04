@@ -50,8 +50,11 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   testes em `markers.test.ts`), `web/src/markerLayer.ts` (canvas único num pane próprio, hit
   test) e `web/src/markerPanel.ts` (painel, popup; recebe a calibração via
   `CalibrationPanel.onData`). Zoom do Leaflet fica no canto inferior direito.
-- Tickets 12–15 seguem daqui. No console do web, `window.solaris` expõe `view`,
-  `calibration`, `markers` e `mapData` pra depuração.
+- **Progresso (ticket 12):** `web/src/progress.ts` (`ProgressStore` no IndexedDB, backup
+  `parseBackup`/`makeBackup`, `tallyMarkers`; testes em `progress.test.ts`). O painel de
+  marcadores mostra e alterna. Cuidado: os ids dos marcadores são a chave do progresso.
+- Tickets 13–15 seguem daqui. No console do web, `window.solaris` expõe `view`,
+  `calibration`, `markers`, `progress` e `mapData` pra depuração.
 
 ## Dados do mapa (`data/maps/<name>.json`) e API local
 - **Ir direto para:** `web/server/mapData.ts` (validação de nome contra o `maps.json` e
