@@ -7,6 +7,7 @@
 **Status:** ready-for-agent
 
 - [ ] Script gera os marcadores localmente a partir do clone (saída fora do git)
-- [ ] Marcadores atribuídos ao mapa certo (map_id)
+- [ ] Marcadores atribuídos ao mapa certo (AkiMapSource.MapPath → map_id das tiles)
+- [ ] Teleporter.Type 2 = Beacon (teleporte), Type 1 = Nexus, Type 3 = entrada de instância; posição = LevelEntityConfig_0+_1 por (MapId, EntityId), Transform[0]
 - [ ] Ícones por categoria, filtro por categoria e busca por nome
 - [ ] Performance ok com milhares de marcadores (clustering ou canvas se precisar)

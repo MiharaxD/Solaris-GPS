@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] Se o repo não existir/estiver inacessível, isso é reportado e o resto do ticket para
-- [ ] Lista de arquivos relevantes, formato (campos, unidades) e exemplos reais abertos, sem suposição
-- [ ] Resposta explícita: teleportes e nexus estão nos dados? Se não, aviso para cadastro manual
-- [ ] Resposta explícita: os dados indicam o mapa/nível (ex.: AkiWorld, WP_HHA_Underground) de cada entidade?
-- [ ] Nenhum dado do repo é commitado
+- [x] Se o repo não existir/estiver inacessível, isso é reportado e o resto do ticket para
+- [x] Lista de arquivos relevantes, formato (campos, unidades) e exemplos reais abertos, sem suposição
+- [x] Resposta explícita: teleportes e nexus estão nos dados? Se não, aviso para cadastro manual
+- [x] Resposta explícita: os dados indicam o mapa/nível (ex.: AkiWorld, WP_HHA_Underground) de cada entidade?
+- [x] Nenhum dado do repo é commitado

@@ -23,8 +23,21 @@
 
 - **O tracker publica `x, y` em pixel do zoom máximo do mapa ativo.**
   Por quê: é o espaço onde ele faz o matching.
-  Exige: a conversão pra coordenada de jogo acontece só no web, e o tracker não depende da
-  calibração afim.
+  Exige: a conversão pra coordenada de jogo acontece no web. O tracker não aplica afim em
+  runtime: as referências dele (teleportes e Nexus) chegam já em pixel (ver a próxima
+  decisão).
+
+- **As referências do tracker são os teleportes e Nexus do WutheringData** (Teleporter Type
+  2 = Beacon e Type 1 = Nexus, com a posição de `LevelEntityConfig_0/_1`), convertidos pra
+  pixel pela calibração do mapa num arquivo gerado localmente e ignorado pelo git. Nos mapas
+  sem dados (honami-city, dimmr-plains, simulacrum-nexus-mengzhou), elas vêm do cadastro
+  manual em `data/maps/`.
+  Por quê: os dados cobrem 7 dos 10 mapas, e os dados do vendor não podem ser commitados.
+  Exige: regerar esse arquivo sempre que a calibração do mapa mudar.
+
+- **A máscara do matching por imagem usa a cor de fundo, não alpha.** As tiles são RGB, com
+  o fundo azul pintado (~RGB(4,36,52) e variações por mapa) e padding preto puro.
+  Por quê: confirmado na Fase 0. O prompt supunha que as tiles tinham alpha.
 
 - **O venv do tracker usa Python 3.11 (`py -3.11`).**
   Por quê: o 3.15 é novo demais pras versões compiladas do OpenCV e do mss, e o 3.12 do uv

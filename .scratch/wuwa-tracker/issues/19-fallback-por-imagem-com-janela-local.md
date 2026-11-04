@@ -7,5 +7,5 @@
 **Status:** ready-for-agent
 
 - [ ] Janela (ex.: 3x3 tiles) montada em memória, tons de cinza, cache LRU de tiles; nunca os PNGs costurados
-- [ ] Alpha da tile usado como máscara; centro (seta) e ícones mascarados
+- [ ] Máscara pela cor de fundo do mapa (azul ~RGB(4,36,52), pintado na tile: não há alpha) e pelo preto puro de padding; centro (seta), cone de visão e ícones mascarados
 - [ ] Linha da camada na tabela de acurácia/tempo

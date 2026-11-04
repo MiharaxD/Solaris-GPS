@@ -11,8 +11,10 @@ Python: use `py -3.11`. O padrão da máquina é o 3.15, novo demais pras libs. 
 não funciona: o 3.12 que existe foi instalado pelo uv e não está registrado no `py`.
 
 ## Comandos
-Ainda não há código de app. Os comandos de instalar, rodar e testar entram aqui quando os
-tickets 05, 08 e 17 existirem.
+- Python do projeto: `.venv/Scripts/python` (3.11). Pra recriar:
+  `py -3.11 -m venv .venv` e depois `.venv/Scripts/python -m pip install pillow numpy`.
+- Inventário dos mapas: `.venv/Scripts/python tools/build_tiles.py inventory`.
+- Os comandos do web e do tracker entram aqui quando os tickets 05, 08 e 17 existirem.
 
 **Só com pedido explícito do usuário:**
 - `python tools/wuwa_maps.py --cache assets/tiles_cache --out assets/mapas ...` baixa do CDN

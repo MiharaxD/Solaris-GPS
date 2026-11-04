@@ -1,34 +1,48 @@
 # Estado atual
 
-**Fase:** antes da Fase 0. Plano fechado e quebrado em 30 tickets. Ainda não há código do app.
+**Fase:** Fase 0 concluída (tickets 01–03). Ticket 04 🛑 esperando aprovação do usuário.
 
 ## Pronto
-- Assets organizados em `assets/tiles_cache/` (10 mapas) e `assets/mapas/` (PNGs de
-  referência).
-- `tools/wuwa_maps.py` versionado, sem alterações.
-- Repositório na branch `main`, remote `origin` = github.com/MiharaxD/Solaris-GPS (PÚBLICO). `.gitignore` cobre assets, tiles
-  geradas, `maps.json` e `vendor/`.
+- `tools/build_tiles.py`: `inventory [--alpha]`, `manifest <map_id> --name`, `pyramid <map_id> --lo N`.
+- Manifest do Overworld gerado a partir do disco (`overworld`, z5 e z6).
+- Repositório na branch `main`, remote `origin` = github.com/MiharaxD/Solaris-GPS (**público**).
+- `.venv` com Python 3.11, Pillow e numpy (`.venv/Scripts/python`).
+- WutheringData em `vendor/WutheringData` (clone parcial com sparse checkout, só os
+  arquivos usados).
+
+## Fatos confirmados na Fase 0
+- 10 mapas, tiles 512×512. Todas as grades estão completas dentro dos limites (0 posições
+  vazias). Os arquivos de 0 bytes ficam só na borda testada pelo downloader.
+- **As tiles são RGB, sem canal alpha.** O fundo azul-escuro (~RGB(4,36,52); o
+  `tethys-deep` usa ~(16,40,56)) vem pintado na tile, e há padding preto puro em algumas
+  bordas (ex.: coluna 0 do Overworld z5).
+- **A pirâmide é padrão:** z5 (r,c) = z6 (2r..2r+1, 2c..2c+1) reduzido, com erro RGB médio
+  de 0,21/255 no deslocamento (0,0) contra 2,7–7 nos deslocamentos vizinhos. Dá pra gerar
+  zooms menores por redução.
+- **O WutheringData tem os teleportes com posição.** `Teleporter.json` (Type 2 = Beacon,
+  Type 1 = Nexus, Type 3 = entrada de instância) → `TeleportEntityConfigId` → entidade em
+  `LevelEntityConfig_0/_1.json` por (MapId, EntityId) → `Transform[0]` {X, Y, Z}. Os 733
+  resolvem.
+- **Cobertura:** Overworld (175 beacons e 33 Nexus), Lahai-Roi (28 e 9), Tethys (9 e 0),
+  Avinoleum (8 e 1), Fabricatorium (7 e 0), Vault (5 e 0), Chronorift (0 e 1). **Sem
+  dados:** honami-city, dimmr-plains e simulacrum-nexus-mengzhou. Os dois últimos são
+  mapas mais novos que o dump (último commit: março de 2026).
+- O `MarkVector` do `MapMark.json` vem zerado (só os rótulos de área têm posição).
+  Posição sempre vem da entidade.
+- O `LevelEntityConfig.json` sem sufixo é um dump antigo (setembro de 2025). Usar o `_0` +
+  `_1`.
 
 ## Próximo (a frente)
-1. Ticket 01: inventário e manifest do Overworld a partir do disco.
-2. Ticket 03: investigação do WutheringData (pode rodar em paralelo com o 01).
-3. Ticket 02: teste da pirâmide z5↔z6 (depende do 01).
-4. Ticket 04 🛑: relatório da Fase 0 e aprovação.
-
-## Fatos levantados
-- O Overworld não tem manifest. O z5 é 32×32 (1024 tiles, todas preenchidas). O z6 tem
-  3968 tiles, linhas 0–63 e colunas 1–62. Os limites batem com uma pirâmide padrão, mas
-  ainda não foi verificado pixel a pixel.
-- Os outros 9 mapas têm manifest. Honami, Avinoleum, Tethys e Vault têm uma pasta de zoom
-  acima do máximo só com 49 arquivos de 0 bytes, que é sondagem do downloader.
-- Python registrado no `py`: 3.11, 3.14 e 3.15. Node 24. Sem Rust e sem uv no PATH.
+- Ticket 04 🛑: aprovação. Depois, ticket 05 (primeiro mapa no ar).
 
 ## Depende do usuário
-- Sprites dos ícones (teleporte, Nexus, seta do jogador) e prints dos fixtures (Fase 2).
-- Escala de UI em que joga (resolução já informada: 2560x1440).
-- Pontos de calibração clicados no jogo (Fase 1).
+- Sprites dos ícones **recortados do minimapa** (teleporte, Nexus e seta, na escala real em
+  1440p). Os enviados (59×82 e 94×85) parecem vir do mapa grande.
+- Prints de tela cheia pros fixtures (Fase 2) e a escala de UI. Resolução: 2560×1440.
+- Pontos de calibração (Fase 1). Teleportes à mão só nos 3 mapas sem dados.
 - Instalar o Rust antes da Fase 4.
 
 ## Limitações conhecidas
-- O WutheringData ainda não foi verificado: não se sabe se tem teleportes e Nexus com
-  coordenadas (não verificado).
+- O minimapa tem um cone de visão claro que gira com a câmera. Ele precisa de máscara ou
+  tratamento no matching (não verificado o quanto atrapalha).
+- Os dados de entidades podem não bater com a versão atual do jogo (dump de março de 2026).
