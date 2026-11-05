@@ -37,13 +37,15 @@
   mapas sem dados (honami-city, dimmr-plains, simulacrum-nexus-mengzhou).
   Por quê: os dados cobrem 7 dos 10 mapas, e os dados do vendor não podem ser commitados.
 
-- **A máscara do matching por imagem usa a cor de fundo, não alpha.** As tiles são RGB, com
-  o fundo azul pintado (~RGB(4,36,52) e variações por mapa) e padding preto puro. Tile
-  "lisa" (desvio padrão < 2, cor do fundo) = vazio: são 81% do Overworld, e há buracos
-  assim até no meio da terra (ex.: z6 linha 28, colunas 20–21), um defeito dos dados do
-  th.gl.
-  Exige: o matching ignora a cor de fundo. O build copia as tiles lisas mesmo assim (são
-  baratas e evitam 404 no Leaflet).
+- **No matching por imagem, a máscara fica só no minimapa** (furo da seta, cone de visão e
+  ícones claros); o mapa entra inteiro, em tons de cinza. Nos 9 fixtures, mascarar a cor de
+  fundo do mapa (~RGB(4,36,52)) fez errar um caso, porque o mar do minimapa também é escuro e
+  casa com ele, e mascarar só o padding preto não mudou nada (+20 ms). Cor RGB também não
+  ganhou nada e custa 3×. As opções continuam no código (`planesWindow`, `MinimapMaskOptions`).
+  Tiles "lisas" (desvio < 2, cor do fundo) são o vazio do th.gl (81% do Overworld), com
+  buracos até no meio da terra (ex.: z6 linha 28, colunas 20–21). O build copia essas tiles
+  mesmo assim (são baratas e evitam 404 no Leaflet).
+  Exige: reavaliar a máscara do fundo se aparecer fixture em cima desses buracos.
 
 - **No build do web, o zoom nativo é preferido ao gerado** (ex.: z5 do Overworld), e as
   posições sem filha são preenchidas com preto (ou transparente, se a origem for RGBA). O

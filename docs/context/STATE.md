@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17 e 18 feitos.
+**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–19 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -39,8 +39,16 @@
 - Escala (ticket 18): "Medir escala" no painel Fixture varre raios com NCC mascarada (cinza, furo
   na seta) num Worker (~2,4 s) e salva a mediana. Overworld: raio 104,3 px do z6 (8 medições,
   101–105; 0,83 px do z6 por px do minimapa a 1440p). O chute da spec (~1 tile, raio 256) estava
-  2,5× maior. NCC 0,51–0,90 com a anotação a até ~30 px. O print 204708 (cone de visão claro,
-  área azulada) não casa em cinza puro (NCC 0,44): caso de teste pro ticket 19.
+  2,5× maior. Com o raio do minimapa estável, os 8 bons dão 104,4–104,8. O 204708 não mede
+  (a varredura não mascara o cone).
+- Camada imagem (ticket 19): no Worker, com posição anterior, acha o minimapa por NCC em cinza
+  numa janela 3×3 de tiles (busca ±160 px). Nos 9 prints, a 1440p e 1080p, partindo de 4
+  posições anteriores até 100 px fora, acerta todos e sempre no mesmo ponto. ~25 ms por frame
+  no navegador e ~40 ms quando troca a janela. NCC 0,35–0,96 (o 204708 é o pior). Ainda não
+  tem UI: a posição inicial vem do "Find me" (ticket 20).
+- Os prints foram anotados em cima de teleportes/Nexus. Em 204534, 204619 e 204748 a anotação
+  ficou 15–34 px fora do teleporte, e o casamento aponta pro teleporte: o erro "contra a
+  anotação" do runner inclui esse ruído.
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
@@ -75,8 +83,8 @@
   `_1`.
 
 ## Próximo (a frente)
-- **Ticket 19** (fallback por imagem com janela local). Os tickets 19–23 escolhem os algoritmos
-  pelos números do runner sobre os 9 fixtures. O ticket 10 (afim por área) fica
+- **Ticket 20** (busca global e "Find me"). Os tickets 20–23 escolhem os algoritmos pelos
+  números do runner sobre os 9 fixtures. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
@@ -89,8 +97,10 @@
 - Teleportes à mão nos 3 mapas sem dados (pelo "+ Novo marcador").
 
 ## Limitações conhecidas
-- O minimapa tem um cone de visão claro que gira com a câmera. Ele precisa de máscara ou
-  tratamento no matching: no print 204708 ele derruba o casamento em cinza.
+- O cone de visão (claro, ~60°, gira com a câmera) é detectado pelos degraus de brilho nas
+  bordas mais o contraste do setor. Acerta 8 dos 9 prints; no 204214 (cone sutil sobre chão
+  amarelo) pega os prédios brancos, e o casamento acerta mesmo assim. Sem a máscara, o 204708
+  erra. O raio detectado oscila 123–126 px a 1440p; o rastreio precisa da região salva.
 - No navegador, a frequência do rastreio e o comportamento com a aba em segundo plano ainda
   não foram medidos.
 - Os dados de entidades podem não bater com a versão atual do jogo (dump de março de 2026).

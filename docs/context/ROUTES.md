@@ -84,10 +84,16 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `scale.ts` (`sweepScale`: passada grossa e fina), `tiles.ts` (`grayWindow` das tiles do zoom
   máximo; leitor do navegador e, no runner, `sharp`) e `scaleWorker.ts`. UI na seção "Escala do
   minimapa" do `fixturePanel.ts`; grava `minimapScale` (`mapData.ts`).
-- **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts` e `scale.test.ts`) e
+- **Camada imagem (ticket 19):** `web/src/tracker/locate.ts` (`detectCone`, `minimapPlanes`,
+  `locateByImage`: grossa 4× + fina + subpixel), `imageLocator.ts` (janela 3×3 tiles com LRU,
+  usada no Worker e no runner) e `planesWindow`/`lruTileReader` em `tiles.ts`. O Worker roda a
+  camada quando o frame traz `locate` (`protocol.ts`).
+- **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`, `scale.test.ts` e
+  `locate.test.ts`, com as imagens de `synthetic.ts`) e
   `npm --prefix web run fixtures` (runner sobre `tracker/fixtures/` e `tracker/samples/`;
   config em `web/vitest.fixtures.config.ts`; `SOLARIS_DUMP=<pasta>` grava os recortes; mede a
-  escala de cada print anotado e imprime a mediana).
+  escala de cada print anotado e imprime a mediana; uma tabela por camada, todas com uma região
+  do minimapa por resolução, como o ajuste salvo).
   Depuração visual: http://127.0.0.1:5173/lab.html.
 - **Cuidados:** o Vite não serve `tracker/` (fs restrito): no laboratório, abra o arquivo pelo
   seletor. Prints e sprites nunca vão pro `web/public`. O runner lê as tiles de

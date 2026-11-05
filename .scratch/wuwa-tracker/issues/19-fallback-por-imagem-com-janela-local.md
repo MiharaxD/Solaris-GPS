@@ -4,9 +4,9 @@
 
 **Blocked by:** 18
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Janela (ex.: 3x3 tiles) montada das tiles em tons de cinza, com cache LRU; nunca os PNGs costurados
-- [ ] Máscara pela cor de fundo do mapa (tiles RGB sem alpha; tiles lisas = vazio) e padding preto; centro (seta), cone de visão e ícones mascarados
-- [ ] Implementação escolhida pelos números (OpenCV.js empacotado localmente vs. correlação própria em WASM/WebGL/WebGPU)
-- [ ] Linha da camada na tabela de acurácia/tempo
+- [x] Janela (ex.: 3x3 tiles) montada das tiles em tons de cinza, com cache LRU; nunca os PNGs costurados
+- [x] Máscara pela cor de fundo do mapa (tiles RGB sem alpha; tiles lisas = vazio) e padding preto; centro (seta), cone de visão e ícones mascarados. No minimapa: seta, cone e ícones claros. No mapa, a máscara do fundo piorou (o mar também casa) e a do preto não mudou nada: ficam como opção, desligadas.
+- [x] Implementação escolhida pelos números (OpenCV.js empacotado localmente vs. correlação própria em WASM/WebGL/WebGPU). NCC própria em TS puro, grossa (4×) + fina: ~25 ms/frame no navegador; OpenCV.js/WASM não se justifica.
+- [x] Linha da camada na tabela de acurácia/tempo
