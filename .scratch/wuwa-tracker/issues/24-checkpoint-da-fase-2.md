@@ -4,7 +4,7 @@
 
 **Blocked by:** 17, 18, 19, 20, 21, 22, 23
 
-**Status:** hitl
+**Status:** done
 
-- [ ] Tabela final apresentada
-- [ ] Aprovação explícita do usuário
+- [x] Tabela final apresentada
+- [x] Aprovação explícita do usuário

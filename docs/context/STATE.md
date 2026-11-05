@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 e 23 feitos; 21 e 22 em parte. **Parado no 🛑 24** (checkpoint da Fase 2).
+**Fase:** Fase 3 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 e 23 feitos; 21 e 22 em parte. Fase 2 aprovada (🛑 24); Fase 3 em andamento.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -102,8 +102,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- 🛑 Ticket 24: mostrar as tabelas do runner e esperar o ok do usuário antes da Fase 3.
-  Os itens pendentes de 21 e 22 dependem dos prints abaixo. O ticket 10 (afim por área) fica
+- Ticket 25 (rastreio ao vivo). Os itens pendentes de 21 e 22 dependem dos prints abaixo. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
