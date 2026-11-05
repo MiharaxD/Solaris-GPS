@@ -96,8 +96,10 @@
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
 
 ## Depende do usuário
-- 9 fixtures do Overworld em `tracker/fixtures/` (todos com 1 ícone). Faltam casos com 0 e 2+
-  ícones, interiores/cavernas (confirmar que a escala não muda) e outros mapas.
+- **Bloqueante pro ticket 21:** prints com ícones de teleporte/Nexus LONGE do centro (0, 1 e
+  2+ ícones), andando um pouco depois do teleporte. Os 9 fixtures do Overworld foram tirados em
+  cima do teleporte (ícone embaixo da seta): só cobrem o caso especial. Pedido em 2026-11-04.
+  Também ajudam: interiores/cavernas (confirmar que a escala não muda) e outros mapas.
 - Os sprites do minimapa (teleporte, Nexus e seta) serão recortados desses prints, não pedidos
   à parte. Escala observada a 1440p: Nexus ~34 px, teleporte ~14×34 px.
 - Teleportes à mão nos 3 mapas sem dados (pelo "+ Novo marcador").
