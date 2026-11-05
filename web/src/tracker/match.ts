@@ -81,40 +81,51 @@ export function resizeGray(g: Gray, w: number, h: number): Gray {
   const wx = areaWeights(g.width, w);
   const wy = areaWeights(g.height, h);
   const tmp = new Float32Array(w * g.height);
+  const d = g.data;
   for (let y = 0; y < g.height; y++) {
     const row = y * g.width;
+    const o = y * w;
     for (let j = 0; j < w; j++) {
       let s = 0;
-      for (const [i, wgt] of wx[j]!) s += g.data[row + i]! * wgt;
-      tmp[y * w + j] = s;
+      for (let k = wx.start[j]!; k < wx.start[j + 1]!; k++) s += d[row + wx.idx[k]!]! * wx.wgt[k]!;
+      tmp[o + j] = s;
     }
   }
   const out = new Float32Array(w * h);
   for (let j = 0; j < h; j++) {
-    for (const [i, wgt] of wy[j]!) {
-      const src = i * w;
-      const dst = j * w;
+    const dst = j * w;
+    for (let k = wy.start[j]!; k < wy.start[j + 1]!; k++) {
+      const src = wy.idx[k]! * w;
+      const wgt = wy.wgt[k]!;
       for (let x = 0; x < w; x++) out[dst + x]! += tmp[src + x]! * wgt;
     }
   }
   return { width: w, height: h, data: out };
 }
 
-/** Pesos (índice de origem, peso) de cada pixel novo; somam 1. Ampliando, vira vizinho mais próximo. */
-function areaWeights(n: number, m: number): [number, number][][] {
+/**
+ * Pesos de cada pixel novo (somam 1), em listas planas: pixel j usa idx/wgt de start[j] a
+ * start[j+1]. Ampliando, vira vizinho mais próximo.
+ */
+function areaWeights(n: number, m: number): { start: Int32Array; idx: Int32Array; wgt: Float32Array } {
   const k = n / m;
-  const out: [number, number][][] = [];
+  const start = new Int32Array(m + 1);
+  const idx: number[] = [];
+  const wgt: number[] = [];
   for (let j = 0; j < m; j++) {
+    start[j] = idx.length;
     const a = j * k;
     const b = Math.min(n, a + k);
-    const list: [number, number][] = [];
     for (let i = Math.floor(a); i < Math.ceil(b); i++) {
-      const wgt = (Math.min(b, i + 1) - Math.max(a, i)) / (b - a);
-      if (wgt > 0) list.push([i, wgt]);
+      const v = (Math.min(b, i + 1) - Math.max(a, i)) / (b - a);
+      if (v > 0) {
+        idx.push(i);
+        wgt.push(v);
+      }
     }
-    out.push(list);
   }
-  return out;
+  start[m] = idx.length;
+  return { start, idx: Int32Array.from(idx), wgt: Float32Array.from(wgt) };
 }
 
 export interface MatchResult {
