@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Ticket 17 feito.
+**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17 e 18 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -33,9 +33,14 @@
   `tracker/fixtures/` pela API local `/api/fixtures`. A captura da tela compartilhada fica
   pro ticket 17.
 - Tracker (ticket 17): botão "Tracker" compartilha a tela (só vídeo), acha o minimapa sozinho
-  (Hough no canto superior esquerdo) e mostra a prévia; ajuste manual salvo por resolução. Nas
-  amostras reais a detecção dá 99–100% em 1440p e 1080p. Ainda não testado num print real de
-  tela cheia nem no jogo ao vivo.
+  (Hough no canto superior esquerdo) e mostra a prévia; ajuste manual salvo por resolução. Nos 9
+  prints reais de tela cheia a detecção dá 97–100% (centro ~172,163, raio 123–126 a 1440p).
+  Ainda não testado no jogo ao vivo.
+- Escala (ticket 18): "Medir escala" no painel Fixture varre raios com NCC mascarada (cinza, furo
+  na seta) num Worker (~2,4 s) e salva a mediana. Overworld: raio 104,3 px do z6 (8 medições,
+  101–105; 0,83 px do z6 por px do minimapa a 1440p). O chute da spec (~1 tile, raio 256) estava
+  2,5× maior. NCC 0,51–0,90 com a anotação a até ~30 px. O print 204708 (cone de visão claro,
+  área azulada) não casa em cinza puro (NCC 0,44): caso de teste pro ticket 19.
 - API local `/api/map-data/<name>` no servidor do Vite (grava/lê `data/maps/`), com 10 testes
   Vitest. O tracker vai rodar no navegador (decisão do usuário); o servidor Python foi removido.
 - `web/`: Vite + TS + Leaflet com seletor dos 10 mapas (escolha salva no localStorage), HUD de pixel
@@ -70,25 +75,24 @@
   `_1`.
 
 ## Próximo (a frente)
-- **Parado no ticket 18** (escala minimapa→mapa), esperando os prints do usuário. Os tickets
-  18–23 dependem de fixtures reais pra escolher os algoritmos pelos números. O ticket 10 (afim por área) fica
+- **Ticket 19** (fallback por imagem com janela local). Os tickets 19–23 escolhem os algoritmos
+  pelos números do runner sobre os 9 fixtures. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
 
 ## Depende do usuário
-- **Bloqueante:** 8–10 prints de tela cheia (2560×1440) anotados pelo botão "Fixture" em
-  `tracker/fixtures/`, com casos de 0, 1 e 2+ ícones, campo aberto, cidade e direções variadas.
-  Pedido ao usuário em 2026-11-04; a pasta ainda está vazia.
+- 9 fixtures do Overworld em `tracker/fixtures/` (todos com 1 ícone). Faltam casos com 0 e 2+
+  ícones, interiores/cavernas (confirmar que a escala não muda) e outros mapas.
 - Os sprites do minimapa (teleporte, Nexus e seta) serão recortados desses prints, não pedidos
   à parte. Escala observada a 1440p: Nexus ~34 px, teleporte ~14×34 px.
 - Teleportes à mão nos 3 mapas sem dados (pelo "+ Novo marcador").
 
 ## Limitações conhecidas
 - O minimapa tem um cone de visão claro que gira com a câmera. Ele precisa de máscara ou
-  tratamento no matching (não verificado o quanto atrapalha).
+  tratamento no matching: no print 204708 ele derruba o casamento em cinza.
 - No navegador, a frequência do rastreio e o comportamento com a aba em segundo plano ainda
-  não foram medidos. O Genshin muda o zoom do minimapa em cidades; não verificado no WuWa.
+  não foram medidos.
 - Os dados de entidades podem não bater com a versão atual do jogo (dump de março de 2026).
 - Categoria "Sonance Casket" inferida pelos blueprints `HookSoundBox`/`HookPullSoundBox`; não
   conferida no jogo. Nomes de espécie saem em inglês (o TextMap pt não tem essas chaves).

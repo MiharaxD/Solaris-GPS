@@ -70,6 +70,13 @@
   em outra altura/andar) vão pra `ignoredRefs` em `data/maps`. Elas ficam fora da estimativa
   e da calibração, e o tracker e os marcadores precisam respeitar essa lista.
 
+- **A escala minimapa→mapa é guardada como raio do minimapa em px do zoom máximo**
+  (`minimapScale.radiusPx` em `data/maps`, mediana das medições salvas). Por frame, px do mapa
+  por px do minimapa = `radiusPx / r` (r = raio na tela).
+  Por quê: a área do mundo que o minimapa mostra não depende da resolução nem da escala de UI.
+  Exige: um raio estável na tela. A detecção oscila 123–126 px a 1440p (até 3% de escala), então
+  o rastreio deve usar a região ajustada/salva, não redetectar a cada frame.
+
 - **Fixtures são anotados clicando no mapa web** (ticket 15), a partir de um print ou do
   frame atual da tela compartilhada. Por quê: o WuWa não mostra coordenada na tela.
 

@@ -80,12 +80,18 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `worker.ts` + `protocol.ts` e `web/src/trackerPanel.ts` (captura, prévia, ajuste salvo por
   resolução). Padrões de tela/minimapa do `config.json` chegam via `define`
   (`web/src/config.ts`).
-- **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`) e
+- **Escala (ticket 18):** `web/src/tracker/match.ts` (NCC mascarada, `resizeGray` por área),
+  `scale.ts` (`sweepScale`: passada grossa e fina), `tiles.ts` (`grayWindow` das tiles do zoom
+  máximo; leitor do navegador e, no runner, `sharp`) e `scaleWorker.ts`. UI na seção "Escala do
+  minimapa" do `fixturePanel.ts`; grava `minimapScale` (`mapData.ts`).
+- **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts` e `scale.test.ts`) e
   `npm --prefix web run fixtures` (runner sobre `tracker/fixtures/` e `tracker/samples/`;
-  config em `web/vitest.fixtures.config.ts`; `SOLARIS_DUMP=<pasta>` grava os recortes).
+  config em `web/vitest.fixtures.config.ts`; `SOLARIS_DUMP=<pasta>` grava os recortes; mede a
+  escala de cada print anotado e imprime a mediana).
   Depuração visual: http://127.0.0.1:5173/lab.html.
 - **Cuidados:** o Vite não serve `tracker/` (fs restrito): no laboratório, abra o arquivo pelo
-  seletor. Prints e sprites nunca vão pro `web/public`.
+  seletor. Prints e sprites nunca vão pro `web/public`. O runner lê as tiles de
+  `web/public/tiles/` (precisa do `build_tiles.py build`).
 - Sprites em `tracker/icons/` e prints em `tracker/fixtures/` e `tracker/samples/` são do
   usuário (ignorados pelo git). Escala no minimapa a 1440p: Nexus ~34 px, teleporte ~14×34 px.
 - `config.json`: só os padrões (cache, `data/maps`, tela 2560×1440, minimapa). Os ajustes

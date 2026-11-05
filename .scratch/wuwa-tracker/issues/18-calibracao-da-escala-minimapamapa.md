@@ -4,8 +4,8 @@
 
 **Blocked by:** 17
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Varredura de escalas com score por escala; chute inicial só como centro da busca
-- [ ] Escala salva por mapa em data/maps/<name>.json
-- [ ] Verificar se o WuWa muda o zoom do minimapa em cidades/interiores (o Genshin muda); se mudar, a escala passa a ser estimada por frame dentro de uma faixa
+- [x] Varredura de escalas com score por escala; chute inicial só como centro da busca
+- [x] Escala salva por mapa em data/maps/<name>.json
+- [x] Verificar se o WuWa muda o zoom do minimapa em cidades/interiores (o Genshin muda); se mudar, a escala passa a ser estimada por frame dentro de uma faixa. Em campo, costa e cidade (9 prints) a escala não muda: fica fixa por mapa. Interiores ainda sem print.
