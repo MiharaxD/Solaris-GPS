@@ -5,6 +5,7 @@
  */
 import { GlobalLocator } from "./globalSearch";
 import { ImageLocator } from "./imageLocator";
+import { centerCandidates, DEFAULT_FUSE, fuseGlobal, fuseLocal, type Fused } from "./fuse";
 import { arrowHeading, type Heading } from "./heading";
 import { detectIcons, type DetectedIcon } from "./icons";
 import { DEFAULT_MASK } from "./locate";
@@ -44,6 +45,7 @@ scope.onmessage = async (ev: MessageEvent<ToWorker>) => {
     let located: LocatedResult | null = null;
     let icons: DetectedIcon[] = [];
     let refFix: RefFix | null = null;
+    let fused: Fused | null = null;
     const req = msg.locate;
     if (req?.refs && res.crop && res.region && res.crop.width > 0) {
       const t1 = performance.now();
@@ -58,13 +60,20 @@ scope.onmessage = async (ev: MessageEvent<ToWorker>) => {
         global = new GlobalLocator(req.info, lruTileReader(read, 64), locator, DEFAULT_MASK);
       }
       const t1 = performance.now();
+      const r = res.region.r;
       if (req.prev) {
-        const L = await locator.locate(res.crop, res.region.r, req.radiusPx, req.prev, req.search);
+        const L = await locator.locate(res.crop, r, req.radiusPx, req.prev, req.search);
         located = L && { ...L, mode: "local", confident: true };
+        fused = fuseLocal(L, refFix);
         res.timings.locate = performance.now() - t1;
       } else {
-        const G = await global!.locate(res.crop, res.region.r, req.radiusPx);
-        located = G && { ...G, mode: "global" };
+        // ícone no centro (logo após o TP): só os teleportes do tipo; senão (ou se falhar), o mapa inteiro
+        const cands = req.refs ? centerCandidates(icons, req.radiusPx / r, r, req.refs) : [];
+        const guided = cands.length ? await global!.locate(res.crop, r, req.radiusPx, cands) : null;
+        const G = !guided || guided.score < DEFAULT_FUSE.minGuided ? await global!.locate(res.crop, r, req.radiusPx) : null;
+        const best = guided ?? G;
+        located = best && { ...best, mode: "global" };
+        fused = fuseGlobal(G, guided);
         res.timings.global = performance.now() - t1;
       }
     }
@@ -86,6 +95,7 @@ scope.onmessage = async (ev: MessageEvent<ToWorker>) => {
       located,
       icons,
       refFix,
+      fused,
       heading,
       timings: res.timings,
     };

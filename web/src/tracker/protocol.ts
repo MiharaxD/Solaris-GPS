@@ -1,5 +1,6 @@
 /** Mensagens entre a página e o Worker do tracker. */
 import type { MapInfo } from "../maps";
+import type { Fused } from "./fuse";
 import type { Heading } from "./heading";
 import type { DetectedIcon } from "./icons";
 import type { Located } from "./locate";
@@ -53,6 +54,8 @@ export interface ResultMessage {
   /** Ícones achados no minimapa e a posição por eles (null se ambíguo ou sem ícone). */
   icons: DetectedIcon[];
   refFix: RefFix | null;
+  /** Posição final (ticket 23): as camadas conferidas uma pela outra; null = incoerente/sem resultado. */
+  fused: Fused | null;
   /** Direção pela seta (ticket 22), em todo frame com recorte. */
   heading: Heading | null;
   timings: Record<string, number>;

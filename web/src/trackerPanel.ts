@@ -16,7 +16,7 @@ import type { MapInfo } from "./maps";
 import type { MapView } from "./mapView";
 import type { MinimapRegion, MinimapShape } from "./tracker/minimap";
 import { scaleRegion } from "./tracker/minimap";
-import type { FromWorker, LocatedResult, ToWorker } from "./tracker/protocol";
+import type { FromWorker, ResultMessage, ToWorker } from "./tracker/protocol";
 import { loadPref, savePref } from "./storage";
 
 function h<K extends keyof HTMLElementTagNameMap>(
@@ -31,8 +31,6 @@ function h<K extends keyof HTMLElementTagNameMap>(
 
 /** Frequência dos frames enquanto só recorta (o rastreio ao vivo, ticket 25, mede e ajusta). */
 const FPS = 4;
-/** Abaixo desse NCC, a camada imagem não move a posição (mantém a última). Pior acerto nos fixtures: 0,35. */
-const MIN_LOCAL_SCORE = 0.3;
 
 interface SavedRegion extends MinimapRegion {
   /** true = veio da detecção automática (redetecta se a resolução mudar). */
@@ -285,15 +283,7 @@ export class TrackerPanel {
       }
       this.renderInputs();
     }
-    if (msg.located) this.onLocated(msg.located);
-    // camada de referências: só mostra (qual camada vale é a fusão, ticket 23)
-    if (msg.located && msg.icons.length) {
-      const kinds = msg.icons.map((i) => (i.kind === "nexus" ? "Nexus" : "teleporte")).join(", ");
-      const f = msg.refFix;
-      const by = f ? ` → px ${Math.round(f.px[0])}, ${Math.round(f.px[1])} (${f.mode === "constellation" ? "constelação" : "pela anterior"})` : " (ambíguo)";
-      this.posInfo.textContent += ` · ícones: ${kinds}${by}`;
-    }
-    else if (msg.timings.global !== undefined) this.posInfo.textContent = "Não achei no mapa. Tente o Find me.";
+    if (msg.located || msg.timings.global !== undefined) this.onPosition(msg);
     this.drawPreview(msg.crop, msg.timings, msg.frameW, msg.frameH);
     if (msg.heading) this.stats.textContent += ` · direção ${Math.round(msg.heading.deg)}°`;
   }
@@ -360,27 +350,30 @@ export class TrackerPanel {
     this.posMarker.getElement()?.classList.toggle("guess", guess);
   }
 
-  private onLocated(loc: LocatedResult): void {
-    const where = `${Math.round(loc.px[0])}, ${Math.round(loc.px[1])}`;
-    const ms = Object.values(loc.timings).reduce((a, b) => a + b, 0);
-    if (loc.mode === "global") {
-      if (loc.confident) {
-        this.setPos(loc.px);
-        this.posInfo.textContent = `Achei em px ${where} (NCC ${loc.score.toFixed(2)}, margem ${loc.margin.toFixed(2)}). Seguindo.`;
-      } else {
-        // incerto: mostra o palpite, mas não segue
-        this.setPos(null);
-        this.posMarker.setLatLng(this.view.toLatLng({ x: loc.px[0], y: loc.px[1] })).addTo(this.view.leaflet);
-        this.posMarker.getElement()?.classList.add("guess");
-        this.posInfo.textContent = `Não tenho certeza (NCC ${loc.score.toFixed(2)}, margem ${loc.margin.toFixed(2)}); o palpite está no mapa. Use o Find me.`;
-      }
+  /** Resultado de posição: vale a fusão das camadas (ticket 23). */
+  private onPosition(msg: ResultMessage): void {
+    const f = msg.fused;
+    const loc = msg.located;
+    const icons = msg.icons.length ? ` · ícones: ${msg.icons.map((i) => (i.kind === "nexus" ? "Nexus" : "teleporte")).join(", ")}` : "";
+    if (f) {
+      this.setPos(f.px);
+      const ncc = loc ? ` · NCC ${loc.score.toFixed(2)}` : "";
+      const ms = msg.timings.locate ?? msg.timings.global ?? 0;
+      this.posInfo.textContent =
+        `${loc?.mode === "global" ? "Achei: " : ""}px ${Math.round(f.px[0])}, ${Math.round(f.px[1])} · ${f.layer} · confiança ${f.confidence}` +
+        `${ncc} · ${ms.toFixed(0)} ms${icons}${f.note ? ` (${f.note})` : ""}`;
       return;
     }
-    if (loc.score >= MIN_LOCAL_SCORE) {
-      this.setPos(loc.px);
-      this.posInfo.textContent = `px ${where} · NCC ${loc.score.toFixed(2)} · ${ms.toFixed(0)} ms`;
+    if (loc?.mode === "global") {
+      // incerto: mostra o palpite, mas não segue
+      this.setPos(null);
+      this.posMarker.setLatLng(this.view.toLatLng({ x: loc.px[0], y: loc.px[1] })).addTo(this.view.leaflet);
+      this.posMarker.getElement()?.classList.add("guess");
+      this.posInfo.textContent = `Não tenho certeza (NCC ${loc.score.toFixed(2)}, margem ${loc.margin.toFixed(2)}); o palpite está no mapa. Use o Find me.`;
+    } else if (msg.timings.global !== undefined) {
+      this.posInfo.textContent = "Não achei no mapa. Tente o Find me.";
     } else {
-      this.posInfo.textContent = `Casamento fraco (NCC ${loc.score.toFixed(2)}); mantendo a última posição.`;
+      this.posInfo.textContent = `Camadas incoerentes ou casamento fraco${loc ? ` (NCC ${loc.score.toFixed(2)})` : ""}; mantendo a última posição.`;
     }
   }
 

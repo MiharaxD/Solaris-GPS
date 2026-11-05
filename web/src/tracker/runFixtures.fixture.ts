@@ -19,6 +19,7 @@ import type { Affine } from "../affine";
 import { manualMarkersOf } from "../mapData";
 import type { GameRef } from "../refs";
 import { GlobalLocator } from "./globalSearch";
+import { centerCandidates, fuseGlobal, fuseLocal } from "./fuse";
 import { detectIcons } from "./icons";
 import { locateByRefs, refPoints, type RefPoint } from "./references";
 import { ImageLocator } from "./imageLocator";
@@ -145,6 +146,9 @@ it("roda todos os fixtures", async () => {
   const refsByMap = new Map<string, RefPoint[]>();
   const head: string[] = [
     row([["caso", 44], ["res", 10], ["seta °", 7], ["simetria", 9], ["razão", 6], ["anotada", 8], ["erro °", 7], ["cone °", 7], ["Δ cone", 7], ["ms", 5]]),
+  ];
+  const fus: string[] = [
+    row([["caso", 44], ["res", 10], ["seguindo", 18], ["Δ anot.", 8], ["cand.", 6], ["guiada", 8], ["ms", 6], ["sem anterior", 18], ["Δ anot.", 8]]),
   ];
   const gl: string[] = [
     row([["caso", 44], ["res", 10], ["erro px", 8], ["NCC", 5], ["margem", 7], ["pico", 8], ["certo?", 7], ["geral", 6], ["meio", 6], ["fim", 6], ["total", 6], ["carga ms", 9]]),
@@ -283,6 +287,21 @@ it("roda todos os fixtures", async () => {
         [(gt.overview ?? 0).toFixed(0), 6], [(gt.mid ?? 0).toFixed(0), 6], [(gt.final ?? 0).toFixed(0), 6], [total.toFixed(0), 6],
         [(gt.overviewLoad ?? 0).toFixed(0), 9],
       ]));
+
+      // fusão (ticket 23): seguindo (anterior = anotação + (100, 0)) e sem anterior (global + guiada)
+      const fl = fuseLocal(found[1] ?? null, fix);
+      const cands = centerCandidates(icons, sMap, res.region.r, refs);
+      const tg = performance.now();
+      const guided = cands.length ? await glob.locate(res.crop, res.region.r, saved, cands) : null;
+      const gms = performance.now() - tg;
+      const fg = fuseGlobal(G, guided);
+      const d = (f: { px: [number, number] } | null) => (f ? Math.hypot(f.px[0] - c.px![0], f.px[1] - c.px![1]).toFixed(1) : "—");
+      fus.push(row([
+        [c.name, 44], [res_, 10],
+        [fl ? `${fl.layer}/${fl.confidence}` : "descartado", 18], [d(fl), 8],
+        [String(cands.length), 6], [d(guided), 8], [guided ? gms.toFixed(0) : "—", 6],
+        [fg ? `${fg.layer}/${fg.confidence}` : "nenhum", 18], [d(fg), 8],
+      ]));
     }
   }
   for (const [map, found] of radii) {
@@ -318,6 +337,10 @@ it("roda todos os fixtures", async () => {
       "GLOBAL (ticket 20; sem posição anterior; pico = posição do vencedor entre os picos da visão geral; certo? = margem e NCC acima dos limiares;",
       "geral/meio/fim/total em ms; carga = montar a visão geral do mapa, só na 1ª vez)",
       ...gl,
+      "",
+      "FUSÃO (ticket 23; seguindo = imagem + referências com anterior = anotação + (100, 0); sem anterior = busca global +",
+      "busca guiada pelos teleportes do tipo do ícone no centro (cand. = quantos); Δ anot. = distância à anotação)",
+      ...fus,
       "",
     ].join("\n"),
   );

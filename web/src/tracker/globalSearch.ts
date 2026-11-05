@@ -67,7 +67,11 @@ export class GlobalLocator {
     return Math.max(this.info.minZoom, this.info.maxZoom - Math.floor(Math.log2(F)));
   }
 
-  async locate(crop: Rgba, r: number, radiusPx: number): Promise<GlobalResult | null> {
+  /**
+   * Sem `among`, procura no mapa inteiro. Com `among` (posições candidatas em px do zoom máximo,
+   * ex.: teleportes do tipo do ícone no centro logo após o TP), só confere esses pontos.
+   */
+  async locate(crop: Rgba, r: number, radiusPx: number, among?: readonly [number, number][]): Promise<GlobalResult | null> {
     const timings: Record<string, number> = {};
     let t0 = performance.now();
     const ov = await this.getOverview(this.zoomFor(radiusPx));
@@ -84,17 +88,37 @@ export class GlobalLocator {
     const off = offsets(t, W);
     const gw = W - fw + 1;
     const gh = H - fw + 1;
-    const grid = new Float32Array(Math.max(0, gw * gh)).fill(-2);
-    const area = fw * fw;
-    const L = ov.land;
-    for (let y = 0; y < gh; y++) {
-      for (let x = 0; x < gw; x++) {
-        const land = L[(y + fw) * (W + 1) + x + fw]! - L[y * (W + 1) + x + fw]! - L[(y + fw) * (W + 1) + x]! + L[y * (W + 1) + x]!;
-        if (land < this.opt.minLand * area) continue;
-        grid[y * gw + x] = nccAt(ov.planes, t, off, x, y, 0);
+    let peaks: { x: number; y: number; v: number }[];
+    if (among) {
+      // só os candidatos: melhor NCC a ±1 px de cada um na visão geral
+      peaks = [];
+      for (const P of among) {
+        const x0 = Math.round(P[0] / ov.F - ov.x0 - fw / 2);
+        const y0 = Math.round(P[1] / ov.F - ov.y0 - fw / 2);
+        let b = { x: x0, y: y0, v: -2 };
+        for (let y = y0 - 1; y <= y0 + 1; y++) {
+          for (let x = x0 - 1; x <= x0 + 1; x++) {
+            if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+            const v = nccAt(ov.planes, t, off, x, y, 0);
+            if (v > b.v) b = { x, y, v };
+          }
+        }
+        if (b.v > -2) peaks.push(b);
       }
+      peaks = peaks.sort((a, b) => b.v - a.v).slice(0, this.opt.candidates);
+    } else {
+      const grid = new Float32Array(Math.max(0, gw * gh)).fill(-2);
+      const area = fw * fw;
+      const L = ov.land;
+      for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
+          const land = L[(y + fw) * (W + 1) + x + fw]! - L[y * (W + 1) + x + fw]! - L[(y + fw) * (W + 1) + x]! + L[y * (W + 1) + x]!;
+          if (land < this.opt.minLand * area) continue;
+          grid[y * gw + x] = nccAt(ov.planes, t, off, x, y, 0);
+        }
+      }
+      peaks = localMaxima(grid, gw, gh, 2).slice(0, this.opt.candidates);
     }
-    const peaks = localMaxima(grid, gw, gh, 2).slice(0, this.opt.candidates);
     timings.overview = performance.now() - t0;
     if (peaks.length === 0) return null;
 
