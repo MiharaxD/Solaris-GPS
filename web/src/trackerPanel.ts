@@ -8,7 +8,10 @@
  */
 import L from "leaflet";
 import { CONFIG } from "./config";
-import { loadMapData, minimapScaleOf } from "./mapData";
+import type { Affine } from "./affine";
+import { loadMapData, manualMarkersOf, minimapScaleOf } from "./mapData";
+import { loadRefs } from "./refs";
+import { refPoints, type RefPoint } from "./tracker/references";
 import type { MapInfo } from "./maps";
 import type { MapView } from "./mapView";
 import type { MinimapRegion, MinimapShape } from "./tracker/minimap";
@@ -84,6 +87,8 @@ export class TrackerPanel {
 
   private info: MapInfo | null = null;
   private radiusPx: number | null = null;
+  /** Teleportes/Nexus do mapa em px (camada de referências). */
+  private refs: RefPoint[] = [];
   /** Última posição aceita (px do zoom máximo); null = sem posição. */
   private pos: [number, number] | null = null;
   private wantGlobal = false;
@@ -252,7 +257,7 @@ export class TrackerPanel {
       const msg: ToWorker = { type: "frame", seq: ++this.seq, bitmap, region: this.region, detect: this.wantDetect, shape: this.shape };
       // com o Find me armado, espera o clique (não segue a posição antiga)
       if (this.info && this.radiusPx && !this.armed && (this.wantGlobal || this.pos)) {
-        msg.locate = { info: this.info, radiusPx: this.radiusPx, prev: this.wantGlobal ? undefined : this.pos ?? undefined };
+        msg.locate = { info: this.info, radiusPx: this.radiusPx, prev: this.wantGlobal ? undefined : this.pos ?? undefined, refs: this.refs };
         this.wantGlobal = false;
       }
       this.wantDetect = false;
@@ -281,6 +286,13 @@ export class TrackerPanel {
       this.renderInputs();
     }
     if (msg.located) this.onLocated(msg.located);
+    // camada de referências: só mostra (qual camada vale é a fusão, ticket 23)
+    if (msg.located && msg.icons.length) {
+      const kinds = msg.icons.map((i) => (i.kind === "nexus" ? "Nexus" : "teleporte")).join(", ");
+      const f = msg.refFix;
+      const by = f ? ` → px ${Math.round(f.px[0])}, ${Math.round(f.px[1])} (${f.mode === "constellation" ? "constelação" : "pela anterior"})` : " (ambíguo)";
+      this.posInfo.textContent += ` · ícones: ${kinds}${by}`;
+    }
     else if (msg.timings.global !== undefined) this.posInfo.textContent = "Não achei no mapa. Tente o Find me.";
     this.drawPreview(msg.crop, msg.timings, msg.frameW, msg.frameH);
   }
@@ -311,10 +323,16 @@ export class TrackerPanel {
     if (changed) {
       this.setPos(null);
       this.radiusPx = null;
+      this.refs = [];
       this.renderPosButtons();
       try {
-        const sc = minimapScaleOf(await loadMapData(info.name));
-        if (this.info?.name === info.name) this.radiusPx = sc?.radiusPx ?? null;
+        const [data, refs] = await Promise.all([loadMapData(info.name), loadRefs(info.name)]);
+        if (this.info?.name === info.name) {
+          this.radiusPx = minimapScaleOf(data)?.radiusPx ?? null;
+          const affine = ((data?.calibration as { affine?: Affine } | undefined)?.affine) ?? null;
+          const ignored = new Set(Array.isArray(data?.ignoredRefs) ? (data.ignoredRefs as string[]) : []);
+          this.refs = refPoints(refs, affine, manualMarkersOf(data), ignored);
+        }
       } catch {
         /* API indisponível: sem escala */
       }

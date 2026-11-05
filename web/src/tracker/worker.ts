@@ -5,7 +5,9 @@
  */
 import { GlobalLocator } from "./globalSearch";
 import { ImageLocator } from "./imageLocator";
+import { detectIcons, type DetectedIcon } from "./icons";
 import { DEFAULT_MASK } from "./locate";
+import { locateByRefs, type RefFix } from "./references";
 import { processFrame } from "./pipeline";
 import type { FromWorker, LocatedResult, ToWorker } from "./protocol";
 import { browserTileReader, lruTileReader } from "./tiles";
@@ -33,7 +35,15 @@ scope.onmessage = async (ev: MessageEvent<ToWorker>) => {
     };
     const res = processFrame(read, bitmap.width, bitmap.height, { region: msg.region, detect: msg.detect, shape: msg.shape });
     let located: LocatedResult | null = null;
+    let icons: DetectedIcon[] = [];
+    let refFix: RefFix | null = null;
     const req = msg.locate;
+    if (req?.refs && res.crop && res.region && res.crop.width > 0) {
+      const t1 = performance.now();
+      icons = detectIcons(res.crop, res.region.r);
+      refFix = locateByRefs(icons, req.radiusPx / res.region.r, req.refs, req.prev ?? null);
+      res.timings.refs = performance.now() - t1;
+    }
     if (req && res.crop && res.region && res.crop.width > 0) {
       if (locator?.info.name !== req.info.name) {
         const read = browserTileReader(req.info);
@@ -67,6 +77,8 @@ scope.onmessage = async (ev: MessageEvent<ToWorker>) => {
       detection: res.detection,
       crop,
       located,
+      icons,
+      refFix,
       timings: res.timings,
     };
     scope.postMessage(out, crop ? [crop] : []);

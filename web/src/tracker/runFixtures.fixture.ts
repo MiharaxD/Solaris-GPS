@@ -15,7 +15,12 @@ import type { MapInfo } from "../maps";
 import { embedInFrame, resize, subImage, type Rgba } from "./image";
 import type { MinimapRegion } from "./minimap";
 import { processFrame, type ReadRect } from "./pipeline";
+import type { Affine } from "../affine";
+import { manualMarkersOf } from "../mapData";
+import type { GameRef } from "../refs";
 import { GlobalLocator } from "./globalSearch";
+import { detectIcons } from "./icons";
+import { locateByRefs, refPoints, type RefPoint } from "./references";
 import { ImageLocator } from "./imageLocator";
 import { DEFAULT_MASK, type Located } from "./locate";
 import { median, sweepScale, sweepWindow, type SweepOptions } from "./scale";
@@ -48,6 +53,17 @@ function savedRadius(map: string): number | undefined {
   if (!existsSync(file)) return undefined;
   const r = (JSON.parse(readFileSync(file, "utf8")) as { minimapScale?: { radiusPx?: unknown } }).minimapScale?.radiusPx;
   return typeof r === "number" ? r : undefined;
+}
+
+/** Referências do mapa em px (WutheringData pela calibração + manuais), como no web. */
+function mapRefs(map: string): RefPoint[] {
+  const refsFile = path.join(repo, "web/public/refs", `${map}.json`);
+  const dataFile = path.join(mapDataDir, `${map}.json`);
+  const refs = existsSync(refsFile) ? ((JSON.parse(readFileSync(refsFile, "utf8")) as { refs?: GameRef[] }).refs ?? []) : [];
+  const data = existsSync(dataFile) ? (JSON.parse(readFileSync(dataFile, "utf8")) as Record<string, unknown>) : null;
+  const affine = ((data?.calibration as { affine?: Affine } | undefined)?.affine) ?? null;
+  const ignored = new Set(Array.isArray(data?.ignoredRefs) ? (data.ignoredRefs as string[]) : []);
+  return refPoints(refs, affine, manualMarkersOf(data), ignored);
 }
 
 function nodeTileReader(info: MapInfo): TileReader {
@@ -120,6 +136,10 @@ it("roda todos os fixtures", async () => {
   const radii = new Map<string, number[]>();
   const det: string[] = [row([["caso", 44], ["res", 10], ["minimapa (cx, cy, r)", 22], ["conf", 5], ["detect ms", 10], ["crop ms", 8]])];
   const scale: string[] = [row([["caso", 44], ["raio px", 8], ["NCC", 5], ["casou em (dx, dy)", 18], ["ms", 6]])];
+  const refRows: string[] = [
+    row([["caso", 44], ["res", 10], ["ícones (tipo dx,dy)", 26], ["esperado", 9], ["modo", 13], ["Δ imagem", 9], ["Δ anot.", 8], ["ms", 5]]),
+  ];
+  const refsByMap = new Map<string, RefPoint[]>();
   const gl: string[] = [
     row([["caso", 44], ["res", 10], ["erro px", 8], ["NCC", 5], ["margem", 7], ["pico", 8], ["certo?", 7], ["geral", 6], ["meio", 6], ["fim", 6], ["total", 6], ["carga ms", 9]]),
   ];
@@ -209,6 +229,27 @@ it("roda todos os fixtures", async () => {
         ]));
       }
 
+      // referências (ticket 21): ícones no minimapa; anterior = anotação deslocada (100, 0)
+      let refs = refsByMap.get(info.name);
+      if (!refs) refsByMap.set(info.name, (refs = mapRefs(info.name)));
+      const ti = performance.now();
+      const icons = detectIcons(res.crop, res.region.r);
+      const sMap = saved / res.region.r;
+      const fix = locateByRefs(icons, sMap, refs, [c.px[0] + 100, c.px[1]]);
+      const alone = locateByRefs(icons, sMap, refs, null);
+      const tms = performance.now() - ti;
+      const expected = refs.reduce<RefPoint | null>((b, q) => (!b || Math.hypot(q.px[0] - c.px![0], q.px[1] - c.px![1]) < Math.hypot(b.px[0] - c.px![0], b.px[1] - c.px![1]) ? q : b), null);
+      const imgPx = found[0]?.px;
+      refRows.push(row([
+        [c.name, 44], [res_, 10],
+        [icons.map((i) => `${i.kind === "nexus" ? "N" : "T"} ${i.dx.toFixed(0)},${i.dy.toFixed(0)}`).join(" ") || "nenhum", 26],
+        [expected ? (expected.kind === "nexus" ? "N" : "T") : "—", 9],
+        [fix ? fix.mode + (alone ? "" : "*") : "—", 13],
+        [fix && imgPx ? Math.hypot(fix.px[0] - imgPx[0], fix.px[1] - imgPx[1]).toFixed(1) : "—", 9],
+        [fix ? Math.hypot(fix.px[0] - c.px[0], fix.px[1] - c.px[1]).toFixed(1) : "—", 8],
+        [tms.toFixed(0), 5],
+      ]));
+
       // global (ticket 20): sem posição anterior
       let glob = globals.get(info.name);
       if (!glob) globals.set(info.name, (glob = new GlobalLocator(info, tiles, loc, DEFAULT_MASK)));
@@ -245,6 +286,10 @@ it("roda todos os fixtures", async () => {
       `IMAGEM (ticket 19; anterior = anotação deslocada ${prev}; erro = mediana da distância à anotação;`,
       "espalh. = maior distância entre os resultados; NCC e margem = os piores)",
       ...img,
+      "",
+      "REFERÊNCIAS (ticket 21; N = Nexus, T = teleporte; dx,dy = ícone→centro em px da tela; esperado = tipo do teleporte mais",
+      "perto da anotação; anterior = anotação + (100, 0); * = sem anterior seria ambíguo; Δ imagem = distância à camada imagem)",
+      ...refRows,
       "",
       "GLOBAL (ticket 20; sem posição anterior; pico = posição do vencedor entre os picos da visão geral; certo? = margem e NCC acima dos limiares;",
       "geral/meio/fim/total em ms; carga = montar a visão geral do mapa, só na 1ª vez)",

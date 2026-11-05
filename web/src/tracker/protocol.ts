@@ -1,6 +1,8 @@
 /** Mensagens entre a página e o Worker do tracker. */
 import type { MapInfo } from "../maps";
+import type { DetectedIcon } from "./icons";
 import type { Located } from "./locate";
+import type { RefFix, RefPoint } from "./references";
 
 export interface LocatedResult extends Located {
   mode: "local" | "global";
@@ -20,6 +22,8 @@ export interface LocateRequest {
   prev?: [number, number];
   /** Raio da busca, px do zoom máximo (padrão 160). */
   search?: number;
+  /** Teleportes/Nexus do mapa em px: liga a camada de referências (ticket 21). */
+  refs?: RefPoint[];
 }
 
 export interface FrameMessage {
@@ -45,6 +49,9 @@ export interface ResultMessage {
   crop: ImageBitmap | null;
   /** Resultado da camada imagem, quando pedida. */
   located: LocatedResult | null;
+  /** Ícones achados no minimapa e a posição por eles (null se ambíguo ou sem ícone). */
+  icons: DetectedIcon[];
+  refFix: RefFix | null;
   timings: Record<string, number>;
 }
 
