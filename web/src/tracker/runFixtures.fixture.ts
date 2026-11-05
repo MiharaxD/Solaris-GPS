@@ -22,7 +22,8 @@ import { GlobalLocator } from "./globalSearch";
 import { detectIcons } from "./icons";
 import { locateByRefs, refPoints, type RefPoint } from "./references";
 import { ImageLocator } from "./imageLocator";
-import { DEFAULT_MASK, type Located } from "./locate";
+import { angleDiff, arrowHeading } from "./heading";
+import { DEFAULT_MASK, detectCone, type Located } from "./locate";
 import { median, sweepScale, sweepWindow, type SweepOptions } from "./scale";
 import { grayWindow, type TileReader } from "./tiles";
 
@@ -38,6 +39,8 @@ interface Case {
   /** Só nos prints anotados. */
   map?: string;
   px?: [number, number];
+  /** Direção anotada (0 = norte, horário), se houver. */
+  direction?: number;
 }
 
 function mapInfos(): Map<string, MapInfo> {
@@ -96,13 +99,13 @@ function cases(): { list: Case[]; skipped: string[] } {
   const skipped: string[] = [];
   if (existsSync(fixturesDir)) {
     for (const f of readdirSync(fixturesDir).filter((n) => n.endsWith(".json")).sort()) {
-      const ann = JSON.parse(readFileSync(path.join(fixturesDir, f), "utf8")) as { image?: string; map?: string; px?: [number, number] };
+      const ann = JSON.parse(readFileSync(path.join(fixturesDir, f), "utf8")) as { image?: string; map?: string; px?: [number, number]; direction?: number };
       const img = ann.image ? path.join(fixturesDir, ann.image) : "";
       if (!img.endsWith(".png") || !existsSync(img)) {
         skipped.push(`${f} (só PNG por enquanto)`);
         continue;
       }
-      list.push({ name: f.replace(/\.json$/, ""), frame: readPng(img), map: ann.map, px: ann.px });
+      list.push({ name: f.replace(/\.json$/, ""), frame: readPng(img), map: ann.map, px: ann.px, direction: ann.direction });
     }
   }
   if (existsSync(samplesDir)) {
@@ -140,6 +143,9 @@ it("roda todos os fixtures", async () => {
     row([["caso", 44], ["res", 10], ["ícones (tipo dx,dy)", 26], ["esperado", 9], ["modo", 13], ["Δ imagem", 9], ["Δ anot.", 8], ["ms", 5]]),
   ];
   const refsByMap = new Map<string, RefPoint[]>();
+  const head: string[] = [
+    row([["caso", 44], ["res", 10], ["seta °", 7], ["simetria", 9], ["razão", 6], ["anotada", 8], ["erro °", 7], ["cone °", 7], ["Δ cone", 7], ["ms", 5]]),
+  ];
   const gl: string[] = [
     row([["caso", 44], ["res", 10], ["erro px", 8], ["NCC", 5], ["margem", 7], ["pico", 8], ["certo?", 7], ["geral", 6], ["meio", 6], ["fim", 6], ["total", 6], ["carga ms", 9]]),
   ];
@@ -185,6 +191,20 @@ it("roda todos os fixtures", async () => {
       const res_ = `${frame.width}×${frame.height}`;
       const region = stable.get(`${frame.width}x${frame.height}`) ?? detected;
       const res = processFrame(read, frame.width, frame.height, { region, detect: false, shape: "circle" });
+      if (res.crop && res.region) {
+        // heading (ticket 22): seta; o cone (câmera) só como conferência, já que parado ele aponta pra frente
+        const th = performance.now();
+        const hd = arrowHeading(res.crop, res.region.r);
+        const hms = performance.now() - th;
+        const cone = detectCone(res.crop);
+        const coneDeg = cone ? (((((cone.a0 + cone.a1) / 2) * 180) / Math.PI + 90) % 360 + 360) % 360 : null;
+        head.push(row([
+          [c.name, 44], [res_, 10], [hd ? hd.deg.toFixed(0) : "—", 7], [hd ? hd.symmetry.toFixed(2) : "—", 9], [hd ? hd.ratio.toFixed(2) : "—", 6],
+          [c.direction !== undefined ? String(c.direction) : "—", 8],
+          [hd && c.direction !== undefined ? angleDiff(hd.deg, c.direction).toFixed(1) : "—", 7],
+          [coneDeg !== null ? coneDeg.toFixed(0) : "—", 7], [hd && coneDeg !== null ? angleDiff(hd.deg, coneDeg).toFixed(1) : "—", 7], [hms.toFixed(1), 5],
+        ]));
+      }
       const info = c.map ? infos.get(c.map) : undefined;
       if (!info || !c.px || !res.crop || !res.region) continue;
       let tiles = readers.get(info.name);
@@ -286,6 +306,10 @@ it("roda todos os fixtures", async () => {
       `IMAGEM (ticket 19; anterior = anotação deslocada ${prev}; erro = mediana da distância à anotação;`,
       "espalh. = maior distância entre os resultados; NCC e margem = os piores)",
       ...img,
+      "",
+      "HEADING (ticket 22; seta em graus, 0 = norte, horário; erro = contra a direção anotada; cone = meio do cone de visão,",
+      "que é da câmera, mas parado aponta pra frente: Δ cone serve de conferência sem anotação)",
+      ...head,
       "",
       "REFERÊNCIAS (ticket 21; N = Nexus, T = teleporte; dx,dy = ícone→centro em px da tela; esperado = tipo do teleporte mais",
       "perto da anotação; anterior = anotação + (100, 0); * = sem anterior seria ambíguo; Δ imagem = distância à camada imagem)",

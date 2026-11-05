@@ -1,5 +1,6 @@
 /** Mensagens entre a página e o Worker do tracker. */
 import type { MapInfo } from "../maps";
+import type { Heading } from "./heading";
 import type { DetectedIcon } from "./icons";
 import type { Located } from "./locate";
 import type { RefFix, RefPoint } from "./references";
@@ -52,6 +53,8 @@ export interface ResultMessage {
   /** Ícones achados no minimapa e a posição por eles (null se ambíguo ou sem ícone). */
   icons: DetectedIcon[];
   refFix: RefFix | null;
+  /** Direção pela seta (ticket 22), em todo frame com recorte. */
+  heading: Heading | null;
   timings: Record<string, number>;
 }
 

@@ -295,6 +295,7 @@ export class TrackerPanel {
     }
     else if (msg.timings.global !== undefined) this.posInfo.textContent = "Não achei no mapa. Tente o Find me.";
     this.drawPreview(msg.crop, msg.timings, msg.frameW, msg.frameH);
+    if (msg.heading) this.stats.textContent += ` · direção ${Math.round(msg.heading.deg)}°`;
   }
 
   private drawPreview(crop: ImageBitmap | null, t: Record<string, number>, fw: number, fh: number): void {

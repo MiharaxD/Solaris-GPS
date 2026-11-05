@@ -5,6 +5,7 @@
  */
 import { GlobalLocator } from "./globalSearch";
 import { ImageLocator } from "./imageLocator";
+import { arrowHeading, type Heading } from "./heading";
 import { detectIcons, type DetectedIcon } from "./icons";
 import { DEFAULT_MASK } from "./locate";
 import { locateByRefs, type RefFix } from "./references";
@@ -34,6 +35,12 @@ scope.onmessage = async (ev: MessageEvent<ToWorker>) => {
       return { width: img.width, height: img.height, data: img.data };
     };
     const res = processFrame(read, bitmap.width, bitmap.height, { region: msg.region, detect: msg.detect, shape: msg.shape });
+    let heading: Heading | null = null;
+    if (res.crop && res.region && res.crop.width > 0) {
+      const t1 = performance.now();
+      heading = arrowHeading(res.crop, res.region.r);
+      res.timings.heading = performance.now() - t1;
+    }
     let located: LocatedResult | null = null;
     let icons: DetectedIcon[] = [];
     let refFix: RefFix | null = null;
@@ -79,6 +86,7 @@ scope.onmessage = async (ev: MessageEvent<ToWorker>) => {
       located,
       icons,
       refFix,
+      heading,
       timings: res.timings,
     };
     scope.postMessage(out, crop ? [crop] : []);
