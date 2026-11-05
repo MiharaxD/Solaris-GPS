@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 feitos.
+**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 feitos; 21 em parte.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -52,6 +52,12 @@
   204708, nas duas resoluções) saem "incerto" (margem ≤ 0,04 contra ≥ 0,11 nos acertos), e
   aí a UI mostra o palpite e pede o Find me. Testado no navegador com um canvas simulando a
   tela compartilhada; ainda não com o jogo ao vivo.
+- Referências (ticket 21, em parte): detecta Nexus (anel, tolera a seta por cima) e teleporte
+  pela cor e forma, e calcula a posição pela referência (WutheringData + manuais). Nos 9
+  prints (todos logo após o TP, ícone sob a seta) acha o ícone do tipo certo em 17 de 18 (falha
+  no 204400 a 1080p, ícone quase todo coberto); posição a 1–9 px da camada imagem (17 px no
+  204400 a 1440p). ~8 ms/frame. Com 1 ícone precisa da posição anterior; a constelação (2+)
+  só foi testada com dados sintéticos. O painel só exibe o resultado; a fusão é o ticket 23.
 - Os prints foram anotados em cima de teleportes/Nexus. Em 204534, 204619 e 204748 a anotação
   ficou 15–34 px fora do teleporte, e o casamento aponta pro teleporte: o erro "contra a
   anotação" do runner inclui esse ruído.
@@ -89,8 +95,8 @@
   `_1`.
 
 ## Próximo (a frente)
-- **Ticket 21** (camada de referências: ícones de teleporte/Nexus no minimapa). Os tickets
-  21–23 escolhem os algoritmos pelos números do runner sobre os 9 fixtures. O ticket 10 (afim por área) fica
+- Ticket 21 espera prints (abaixo). Seguir com o que dá: ticket 22 (heading pela seta) e o
+  que não depender de prints novos. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).

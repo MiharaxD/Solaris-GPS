@@ -93,8 +93,13 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `ImageLocator`; `confident` por margem e NCC). Roda no Worker quando `locate` vem sem `prev`.
   UI na seção "Posição" do `trackerPanel.ts` (Achar no mapa, Find me, marcador `.trk-pos`).
   As tiles de qualquer zoom vêm do `TileReader(z, linha, coluna)` em `tiles.ts`.
+- **Referências (ticket 21):** `web/src/tracker/icons.ts` (`detectIcons`: cor dos ícones, anel
+  do Nexus por Hough, pilha do teleporte) e `references.ts` (`refPoints`: WutheringData pela
+  afim + manuais − `ignoredRefs`; `locateByRefs`: constelação ou anterior). O Worker roda quando
+  `locate.refs` vem; o painel Tracker monta as refs em `setMap` e só exibe o resultado.
 - **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`, `scale.test.ts` e
-  `locate.test.ts` e `globalSearch.test.ts`, com as imagens de `synthetic.ts`) e
+  `locate.test.ts`, `globalSearch.test.ts` e `references.test.ts`, com as imagens de
+  `synthetic.ts`) e
   `npm --prefix web run fixtures` (runner sobre `tracker/fixtures/` e `tracker/samples/`;
   config em `web/vitest.fixtures.config.ts`; `SOLARIS_DUMP=<pasta>` grava os recortes; mede a
   escala de cada print anotado e imprime a mediana; uma tabela por camada, todas com uma região
@@ -104,7 +109,8 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   seletor. Prints e sprites nunca vão pro `web/public`. O runner lê as tiles de
   `web/public/tiles/` (precisa do `build_tiles.py build`).
 - Sprites em `tracker/icons/` e prints em `tracker/fixtures/` e `tracker/samples/` são do
-  usuário (ignorados pelo git). Escala no minimapa a 1440p: Nexus ~34 px, teleporte ~14×34 px.
+  usuário (ignorados pelo git). Os sprites não estão na escala do minimapa; medido nos prints a
+  1440p: anel do Nexus com ~43 px de diâmetro, pilha do teleporte ~14×36 px.
 - `config.json`: só os padrões (cache, `data/maps`, tela 2560×1440, minimapa). Os ajustes
   do usuário ficam no navegador.
 
