@@ -19,7 +19,7 @@ import type { Affine } from "../affine";
 import { manualMarkersOf } from "../mapData";
 import type { GameRef } from "../refs";
 import { GlobalLocator } from "./globalSearch";
-import { centerCandidates, fuseGlobal, fuseLocal } from "./fuse";
+import { fuseGlobal, fuseLocal, guidedCandidates } from "./fuse";
 import { detectIcons } from "./icons";
 import { locateByRefs, refPoints, type RefPoint } from "./references";
 import { ImageLocator } from "./imageLocator";
@@ -128,6 +128,9 @@ const dump = process.env.SOLARIS_DUMP;
 const pad = (s: string, n: number) => (s.length >= n ? s.slice(0, n) : s + " ".repeat(n - s.length));
 const row = (cells: [string, number][]) => cells.map(([t, n]) => pad(t, n)).join(" ").trimEnd();
 
+/** Até onde (px do zoom máximo) conta como acerto no resumo; a anotação tem ruído de até ~34 px. */
+const OK_PX = 40;
+
 /** Posições anteriores simuladas pra camada imagem (deslocamento da anotação, px do zoom máximo). */
 const PREV: [number, number][] = [[0, 0], [100, 0], [0, -100], [-70, 70]];
 
@@ -144,6 +147,8 @@ it("roda todos os fixtures", async () => {
     row([["caso", 44], ["res", 10], ["ícones (tipo dx,dy)", 26], ["esperado", 9], ["modo", 13], ["Δ imagem", 9], ["Δ anot.", 8], ["ms", 5]]),
   ];
   const refsByMap = new Map<string, RefPoint[]>();
+  /** Por quantidade de ícones (0, 1, 2+): casos, referências certas seguindo, fusão certa sem anterior. */
+  const byIcons = new Map<string, { n: number; ref: number; alone: number }>();
   const head: string[] = [
     row([["caso", 44], ["res", 10], ["seta °", 7], ["simetria", 9], ["razão", 6], ["anotada", 8], ["erro °", 7], ["cone °", 7], ["Δ cone", 7], ["ms", 5]]),
   ];
@@ -290,7 +295,7 @@ it("roda todos os fixtures", async () => {
 
       // fusão (ticket 23): seguindo (anterior = anotação + (100, 0)) e sem anterior (global + guiada)
       const fl = fuseLocal(found[1] ?? null, fix);
-      const cands = centerCandidates(icons, sMap, res.region.r, refs);
+      const cands = guidedCandidates(icons, sMap, res.region.r, refs).candidates;
       const tg = performance.now();
       const guided = cands.length ? await glob.locate(res.crop, res.region.r, saved, cands) : null;
       const gms = performance.now() - tg;
@@ -302,6 +307,13 @@ it("roda todos os fixtures", async () => {
         [String(cands.length), 6], [d(guided), 8], [guided ? gms.toFixed(0) : "—", 6],
         [fg ? `${fg.layer}/${fg.confidence}` : "nenhum", 18], [d(fg), 8],
       ]));
+      const near = (f: { px: [number, number] } | null) => !!f && Math.hypot(f.px[0] - c.px![0], f.px[1] - c.px![1]) <= OK_PX;
+      const k = icons.length >= 2 ? "2+" : String(icons.length);
+      const g = byIcons.get(k) ?? { n: 0, ref: 0, alone: 0 };
+      g.n++;
+      if (near(fix)) g.ref++;
+      if (near(fg)) g.alone++;
+      byIcons.set(k, g);
     }
   }
   for (const [map, found] of radii) {
@@ -333,13 +345,18 @@ it("roda todos os fixtures", async () => {
       "REFERÊNCIAS (ticket 21; N = Nexus, T = teleporte; dx,dy = ícone→centro em px da tela; esperado = tipo do teleporte mais",
       "perto da anotação; anterior = anotação + (100, 0); * = sem anterior seria ambíguo; Δ imagem = distância à camada imagem)",
       ...refRows,
+      `por ícones detectados (acerto = até ${OK_PX} px da anotação; ref. = esta camada seguindo; sem anterior = fusão sem posição):`,
+      ...["0", "1", "2+"].map((k) => {
+        const g = byIcons.get(k);
+        return g ? `  ${pad(k, 3)} ${g.n} casos: ref. ${g.ref}/${g.n}, sem anterior ${g.alone}/${g.n}` : `  ${pad(k, 3)} nenhum caso`;
+      }),
       "",
       "GLOBAL (ticket 20; sem posição anterior; pico = posição do vencedor entre os picos da visão geral; certo? = margem e NCC acima dos limiares;",
       "geral/meio/fim/total em ms; carga = montar a visão geral do mapa, só na 1ª vez)",
       ...gl,
       "",
       "FUSÃO (ticket 23; seguindo = imagem + referências com anterior = anotação + (100, 0); sem anterior = busca global +",
-      "busca guiada pelos teleportes do tipo do ícone no centro (cand. = quantos); Δ anot. = distância à anotação)",
+      "busca guiada pelos ícones à vista (cand. = posições conferidas; 1 = constelação); Δ anot. = distância à anotação)",
       ...fus,
       "",
     ].join("\n"),

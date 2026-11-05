@@ -3,7 +3,7 @@
  * (local em volta da última; global sem posição ou depois de perder) → fusão. Roda no Worker;
  * o leitor de tiles e o relógio vêm de fora pra dar pra testar.
  */
-import { centerCandidates, DEFAULT_FUSE, fuseGlobal, fuseLocal, type Confidence, type Fused } from "./fuse";
+import { DEFAULT_FUSE, fuseGlobal, fuseLocal, guidedCandidates, iconAtCenter, type Confidence, type Fused } from "./fuse";
 import { GlobalLocator } from "./globalSearch";
 import { arrowHeading, type Heading } from "./heading";
 import { detectIcons, type DetectedIcon } from "./icons";
@@ -173,16 +173,16 @@ export class TrackSession {
     t = this.now();
     const lost = this.state === "perdido" || !this.pos;
     if (this.wantGlobal || (lost && t - this.lastGlobal >= this.opt.globalEvery)) {
-      // global: com ícone no centro (logo após o TP), só os teleportes do tipo; senão o mapa inteiro
+      // global: com ícones à vista, primeiro só as posições que os explicam; senão o mapa inteiro
       this.wantGlobal = false;
       this.lastGlobal = t;
-      const cands = centerCandidates(icons, radiusPx / r, r, map.refs);
-      const guided = cands.length ? await this.global.locate(crop, r, radiusPx, cands) : null;
+      const guide = guidedCandidates(icons, radiusPx / r, r, map.refs);
+      const guided = guide.candidates.length ? await this.global.locate(crop, r, radiusPx, guide.candidates) : null;
       const G = !guided || guided.score < DEFAULT_FUSE.minGuided ? await this.global.locate(crop, r, radiusPx) : null;
       const best = guided ?? G;
       located = best && { ...best, mode: "global" };
       fused = fuseGlobal(G, guided);
-      teleport = !!guided && !!fused && fused.px === guided.px;
+      teleport = guide.trusted && !!guided && !!fused && fused.px === guided.px;
       timings.global = this.now() - t;
     } else if (this.pos) {
       const search = t - this.lastOk < this.opt.firmFor ? this.opt.searchFirm : this.opt.searchLoose;
@@ -190,7 +190,7 @@ export class TrackSession {
       located = L && { ...L, mode: "local", confident: true };
       fused = fuseLocal(L, refFix);
       // nada casou em volta e há ícone sob a seta: provável teleporte, busca guiada no próximo frame
-      if (!fused && centerCandidates(icons, radiusPx / r, r, map.refs).length) this.wantGlobal = true;
+      if (!fused && iconAtCenter(icons, r)) this.wantGlobal = true;
       timings.locate = this.now() - t;
     }
     out.located = located;

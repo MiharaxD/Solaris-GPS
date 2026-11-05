@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centerCandidates, fuseGlobal, fuseLocal } from "./fuse";
+import { fuseGlobal, fuseLocal, guidedCandidates, iconAtCenter } from "./fuse";
 import type { GlobalResult } from "./globalSearch";
 import type { Located } from "./locate";
 import type { RefFix, RefPoint } from "./references";
@@ -32,13 +32,29 @@ describe("fuseGlobal", () => {
   });
 });
 
-describe("centerCandidates", () => {
-  it("só ícones perto do centro, contra os teleportes do mesmo tipo", () => {
-    const refs: RefPoint[] = [
-      { id: "a", kind: "nexus", px: [1000, 1000] },
-      { id: "b", kind: "beacon", px: [2000, 2000] },
+describe("guidedCandidates", () => {
+  const refs: RefPoint[] = [
+    { id: "a", kind: "nexus", px: [1000, 1000] },
+    { id: "b", kind: "beacon", px: [2000, 2000] },
+    { id: "c", kind: "beacon", px: [2100, 2000] },
+    { id: "d", kind: "beacon", px: [5000, 5000] },
+  ];
+  it("com ícone sob a seta, só ele conta e a posição pula a barreira", () => {
+    const g = guidedCandidates([{ kind: "nexus", dx: 10, dy: 0, score: 1 }, { kind: "beacon", dx: 80, dy: 0, score: 1 }], 0.5, 126, refs);
+    expect(g).toEqual({ candidates: [[995, 1000]], trusted: true });
+    expect(iconAtCenter([{ kind: "beacon", dx: 80, dy: 0, score: 1 }], 126)).toBe(false);
+  });
+  it("um ícone longe: cada teleporte do tipo, sem pular a barreira", () => {
+    const g = guidedCandidates([{ kind: "beacon", dx: 80, dy: -40, score: 1 }], 0.5, 126, refs);
+    expect(g.trusted).toBe(false);
+    expect(g.candidates).toEqual([[1960, 2020], [2060, 2020], [4960, 5020]]);
+  });
+  it("dois ícones longe que formam constelação: uma posição só", () => {
+    // jogador em (2050, 2100): b a (-50, -100) e c a (50, -100), em px do mapa; s = 0,5
+    const icons = [
+      { kind: "beacon" as const, dx: -100, dy: -200, score: 1 },
+      { kind: "beacon" as const, dx: 100, dy: -200, score: 1 },
     ];
-    const c = centerCandidates([{ kind: "nexus", dx: 10, dy: 0, score: 1 }, { kind: "beacon", dx: 80, dy: 0, score: 1 }], 0.5, 126, refs);
-    expect(c).toEqual([[995, 1000]]);
+    expect(guidedCandidates(icons, 0.5, 126, refs)).toEqual({ candidates: [[2050, 2100]], trusted: true });
   });
 });
