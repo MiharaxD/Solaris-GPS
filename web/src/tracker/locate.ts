@@ -5,6 +5,7 @@
  * dos melhores candidatos, com ajuste subpixel. Código puro: roda no Worker e no runner.
  */
 import type { Gray, Rgba } from "./image";
+import { azureMask } from "./icons";
 import { resizeGray } from "./match";
 
 /** Imagem em canais separados (cinza = 1 canal, cor = 3) + validade por pixel (1 = conta). */
@@ -24,10 +25,15 @@ export interface MinimapMaskOptions {
   cone: boolean;
   /** Mascara pixels muito claros (ícones, setas de missão), em luminância 0–255; 0 = desliga. */
   bright: number;
+  /**
+   * Mascara os ícones de teleporte/Nexus (grupos da cor deles com até ~60 px a 1440p, pela caixa
+   * inteira + 3 px): são sobrepostos ao minimapa e não existem nas tiles.
+   */
+  icons: boolean;
   color: boolean;
 }
 
-export const DEFAULT_MASK: MinimapMaskOptions = { hole: 0.24, rMax: 0.95, cone: true, bright: 230, color: false };
+export const DEFAULT_MASK: MinimapMaskOptions = { hole: 0.24, rMax: 0.95, cone: true, bright: 230, icons: true, color: false };
 
 const lum = (d: Uint8ClampedArray, i: number) => 0.299 * d[i]! + 0.587 * d[i + 1]! + 0.114 * d[i + 2]!;
 
@@ -161,7 +167,54 @@ export function minimapPlanes(crop: Rgba, opt: MinimapMaskOptions): Planes {
       }
     }
   }
+  if (opt.icons) maskIcons(crop, valid);
   return { width: crop.width, height: crop.height, chans, valid };
+}
+
+/** Zera em `valid` a caixa (+3 px) de cada grupo da cor dos ícones com tamanho de ícone. */
+function maskIcons(crop: Rgba, valid: Uint8Array): void {
+  const W = crop.width;
+  const H = crop.height;
+  const az = azureMask(crop);
+  const k = W / 2 / 126;
+  const maxSide = 60 * k;
+  const pad = Math.max(2, Math.round(3 * k));
+  const seen = new Uint8Array(az.length);
+  const stack: number[] = [];
+  for (let p0 = 0; p0 < az.length; p0++) {
+    if (!az[p0] || seen[p0]) continue;
+    let x0 = W;
+    let x1 = -1;
+    let y0 = H;
+    let y1 = -1;
+    seen[p0] = 1;
+    stack.push(p0);
+    while (stack.length) {
+      const p = stack.pop()!;
+      const x = p % W;
+      const y = (p - x) / W;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const xx = x + dx;
+          const yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+          const q = yy * W + xx;
+          if (az[q] && !seen[q]) {
+            seen[q] = 1;
+            stack.push(q);
+          }
+        }
+      }
+    }
+    if (x1 - x0 + 1 > maxSide || y1 - y0 + 1 > maxSide) continue;
+    for (let y = Math.max(0, y0 - pad); y <= Math.min(H - 1, y1 + pad); y++) {
+      for (let x = Math.max(0, x0 - pad); x <= Math.min(W - 1, x1 + pad); x++) valid[y * W + x] = 0;
+    }
+  }
 }
 
 /** Reamostra (por área) canais e máscara; pixel novo só vale se ≥ 99% dele era válido. */
