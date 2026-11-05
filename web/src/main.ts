@@ -31,7 +31,7 @@ async function start(): Promise<void> {
 
   const calibration = new CalibrationPanel(view);
   const fixtures = new FixturePanel(view);
-  const tracker = new TrackerPanel();
+  const tracker = new TrackerPanel(view);
   tracker.onSharingChange((on) => fixtures.setFrameSource(on ? () => tracker.grabPng() : null));
   const progress = await ProgressStore.open();
   const markers = new MarkerPanel(view, () => calibration.isOpen || fixtures.isOpen, progress, async (map, patch) => {
@@ -58,6 +58,7 @@ async function start(): Promise<void> {
     void calibration.setMap(info);
     void markers.setMap(info);
     fixtures.setMap(info);
+    void tracker.setMap(info);
   };
 
   picker = createMapPicker(toolbar, maps, initial.name, activate);

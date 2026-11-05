@@ -2,11 +2,18 @@
  * Compartilhar tela (getDisplayMedia) + recorte do minimapa. Os frames vão pro Web Worker do
  * tracker; nada sai do PC. O ajuste do recorte fica salvo por resolução no localStorage, com
  * padrão vindo do config.json.
+ * Posição (ticket 20): "Achar no mapa" roda a busca global no próximo frame; "Find me" usa o
+ * clique no mapa como posição anterior. Achada a posição, cada frame segue com a camada imagem
+ * em volta da última (seguir o jogador com a câmera, seta e confiança ficam pro ticket 25).
  */
+import L from "leaflet";
 import { CONFIG } from "./config";
+import { loadMapData, minimapScaleOf } from "./mapData";
+import type { MapInfo } from "./maps";
+import type { MapView } from "./mapView";
 import type { MinimapRegion, MinimapShape } from "./tracker/minimap";
 import { scaleRegion } from "./tracker/minimap";
-import type { FromWorker, ToWorker } from "./tracker/protocol";
+import type { FromWorker, LocatedResult, ToWorker } from "./tracker/protocol";
 import { loadPref, savePref } from "./storage";
 
 function h<K extends keyof HTMLElementTagNameMap>(
@@ -21,6 +28,8 @@ function h<K extends keyof HTMLElementTagNameMap>(
 
 /** Frequência dos frames enquanto só recorta (o rastreio ao vivo, ticket 25, mede e ajusta). */
 const FPS = 4;
+/** Abaixo desse NCC, a camada imagem não move a posição (mantém a última). Pior acerto nos fixtures: 0,35. */
+const MIN_LOCAL_SCORE = 0.3;
 
 interface SavedRegion extends MinimapRegion {
   /** true = veio da detecção automática (redetecta se a resolução mudar). */
@@ -73,7 +82,39 @@ export class TrackerPanel {
   private readonly canvas = h("canvas", { width: 180, height: 180 });
   private readonly stats = h("div", { className: "trk-stats" });
 
-  constructor() {
+  private info: MapInfo | null = null;
+  private radiusPx: number | null = null;
+  /** Última posição aceita (px do zoom máximo); null = sem posição. */
+  private pos: [number, number] | null = null;
+  private wantGlobal = false;
+  private armed = false;
+  private readonly findBtn = h("button", { type: "button", className: "secondary", textContent: "Achar no mapa", disabled: true });
+  private readonly findMeBtn = h("button", { type: "button", className: "secondary", textContent: "Find me", disabled: true });
+  private readonly posInfo = h("p", { className: "calib-status", role: "status" } as Partial<HTMLParagraphElement>);
+  private readonly posMarker = L.circleMarker([0, 0], { radius: 8, className: "trk-pos", interactive: false });
+
+  constructor(private readonly view: MapView) {
+    this.findBtn.title = "Procura o minimapa no mapa inteiro (alguns décimos de segundo)";
+    this.findMeBtn.title = "Clique no mapa onde você está; o tracker procura em volta e volta a seguir";
+    this.findBtn.addEventListener("click", () => {
+      this.wantGlobal = true;
+      this.armed = false;
+      this.posInfo.textContent = "Procurando no mapa inteiro…";
+    });
+    this.findMeBtn.addEventListener("click", () => {
+      this.armed = !this.armed;
+      this.view.leaflet.getContainer().classList.toggle("calibrating", this.armed);
+      this.posInfo.textContent = this.armed ? "Clique no mapa onde você está." : "";
+    });
+    view.leaflet.on("click", (e) => {
+      if (!this.armed) return;
+      this.armed = false;
+      this.view.leaflet.getContainer().classList.remove("calibrating");
+      const p = this.view.toPixel(e.latlng);
+      this.wantGlobal = false;
+      this.setPos([p.x, p.y], true);
+      this.posInfo.textContent = "Procurando em volta do clique…";
+    });
     this.shapeSel.append(h("option", { value: "circle", textContent: "Circular" }), h("option", { value: "square", textContent: "Quadrado" }));
     this.shapeSel.value = this.shape;
     this.startBtn.addEventListener("click", () => void (this.stream ? this.stop() : this.start()));
@@ -107,6 +148,9 @@ export class TrackerPanel {
         h("label", {}, "centro X", this.cx), h("label", {}, "centro Y", this.cy),
         h("label", {}, "raio", this.r), h("label", {}, "formato", this.shapeSel)),
       this.status,
+      h("h3", { textContent: "Posição" }),
+      h("div", { className: "calib-actions" }, this.findBtn, this.findMeBtn),
+      this.posInfo,
     );
     this.preview = h("div", { className: "trk-preview", hidden: true }, this.canvas, this.stats);
     this.renderInputs();
@@ -155,6 +199,7 @@ export class TrackerPanel {
     this.worker.onmessage = (ev: MessageEvent<FromWorker>) => this.onResult(ev.data);
     this.startBtn.textContent = "Parar";
     this.detectBtn.disabled = false;
+    this.renderPosButtons();
     this.preview.hidden = false;
     this.frameSize = null;
     this.status.textContent = "Compartilhando.";
@@ -172,6 +217,9 @@ export class TrackerPanel {
     this.busy = false;
     this.startBtn.textContent = "Compartilhar tela";
     this.detectBtn.disabled = true;
+    this.armed = false;
+    this.wantGlobal = false;
+    this.renderPosButtons();
     this.preview.hidden = true;
     this.status.textContent = "Compartilhamento encerrado.";
     for (const fn of this.listeners) fn(false);
@@ -202,6 +250,11 @@ export class TrackerPanel {
     try {
       const bitmap = await createImageBitmap(this.video);
       const msg: ToWorker = { type: "frame", seq: ++this.seq, bitmap, region: this.region, detect: this.wantDetect, shape: this.shape };
+      // com o Find me armado, espera o clique (não segue a posição antiga)
+      if (this.info && this.radiusPx && !this.armed && (this.wantGlobal || this.pos)) {
+        msg.locate = { info: this.info, radiusPx: this.radiusPx, prev: this.wantGlobal ? undefined : this.pos ?? undefined };
+        this.wantGlobal = false;
+      }
       this.wantDetect = false;
       this.worker.postMessage(msg, [bitmap]);
     } catch {
@@ -227,6 +280,8 @@ export class TrackerPanel {
       }
       this.renderInputs();
     }
+    if (msg.located) this.onLocated(msg.located);
+    else if (msg.timings.global !== undefined) this.posInfo.textContent = "Não achei no mapa. Tente o Find me.";
     this.drawPreview(msg.crop, msg.timings, msg.frameW, msg.frameH);
   }
 
@@ -247,6 +302,67 @@ export class TrackerPanel {
     }
     const ms = Object.entries(t).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(" · ");
     this.stats.textContent = `${fw}×${fh} · ms: ${ms}`;
+  }
+
+  /** Mapa ativo: zera a posição e carrega a escala salva (data/maps). */
+  async setMap(info: MapInfo): Promise<void> {
+    const changed = this.info?.name !== info.name;
+    this.info = info;
+    if (changed) {
+      this.setPos(null);
+      this.radiusPx = null;
+      this.renderPosButtons();
+      try {
+        const sc = minimapScaleOf(await loadMapData(info.name));
+        if (this.info?.name === info.name) this.radiusPx = sc?.radiusPx ?? null;
+      } catch {
+        /* API indisponível: sem escala */
+      }
+      this.renderPosButtons();
+    }
+  }
+
+  private renderPosButtons(): void {
+    const ok = this.stream !== null && this.radiusPx !== null;
+    this.findBtn.disabled = !ok;
+    this.findMeBtn.disabled = !ok;
+    if (this.stream && this.info && this.radiusPx === null) {
+      this.posInfo.textContent = `Sem escala do minimapa em ${this.info.name}: meça no painel Fixture.`;
+    }
+  }
+
+  private setPos(px: [number, number] | null, guess = false): void {
+    this.pos = px;
+    if (!px) {
+      this.posMarker.remove();
+      return;
+    }
+    this.posMarker.setLatLng(this.view.toLatLng({ x: px[0], y: px[1] })).addTo(this.view.leaflet);
+    this.posMarker.getElement()?.classList.toggle("guess", guess);
+  }
+
+  private onLocated(loc: LocatedResult): void {
+    const where = `${Math.round(loc.px[0])}, ${Math.round(loc.px[1])}`;
+    const ms = Object.values(loc.timings).reduce((a, b) => a + b, 0);
+    if (loc.mode === "global") {
+      if (loc.confident) {
+        this.setPos(loc.px);
+        this.posInfo.textContent = `Achei em px ${where} (NCC ${loc.score.toFixed(2)}, margem ${loc.margin.toFixed(2)}). Seguindo.`;
+      } else {
+        // incerto: mostra o palpite, mas não segue
+        this.setPos(null);
+        this.posMarker.setLatLng(this.view.toLatLng({ x: loc.px[0], y: loc.px[1] })).addTo(this.view.leaflet);
+        this.posMarker.getElement()?.classList.add("guess");
+        this.posInfo.textContent = `Não tenho certeza (NCC ${loc.score.toFixed(2)}, margem ${loc.margin.toFixed(2)}); o palpite está no mapa. Use o Find me.`;
+      }
+      return;
+    }
+    if (loc.score >= MIN_LOCAL_SCORE) {
+      this.setPos(loc.px);
+      this.posInfo.textContent = `px ${where} · NCC ${loc.score.toFixed(2)} · ${ms.toFixed(0)} ms`;
+    } else {
+      this.posInfo.textContent = `Casamento fraco (NCC ${loc.score.toFixed(2)}); mantendo a última posição.`;
+    }
   }
 
   private manualEdit(): void {

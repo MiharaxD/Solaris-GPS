@@ -179,7 +179,7 @@ export function resizePlanes(p: Planes, w: number, h: number): Planes {
 }
 
 /** Template compacto: só os pixels válidos, por canal, com média zero (usado sem máscara no mapa). */
-interface Tpl {
+export interface Tpl {
   width: number;
   height: number;
   xs: Int32Array;
@@ -189,7 +189,7 @@ interface Tpl {
   energy: number[];
 }
 
-function compact(p: Planes): Tpl {
+export function compact(p: Planes): Tpl {
   const idx: number[] = [];
   for (let i = 0; i < p.width * p.height; i++) if (!p.valid || p.valid[i]) idx.push(i);
   const xs = Int32Array.from(idx, (i) => i % p.width);
@@ -207,7 +207,7 @@ function compact(p: Planes): Tpl {
 }
 
 /** NCC (média dos canais) com o canto do template em (x, y). Com máscara no mapa, renormaliza. */
-function nccAt(img: Planes, t: Tpl, off: Int32Array, x: number, y: number, minFrac: number): number {
+export function nccAt(img: Planes, t: Tpl, off: Int32Array, x: number, y: number, minFrac: number): number {
   const base = y * img.width + x;
   const n = off.length;
   let total = 0;
@@ -261,7 +261,7 @@ function nccAt(img: Planes, t: Tpl, off: Int32Array, x: number, y: number, minFr
   return total / t.raw.length;
 }
 
-function offsets(t: Tpl, w: number): Int32Array {
+export function offsets(t: Tpl, w: number): Int32Array {
   const off = new Int32Array(t.xs.length);
   for (let k = 0; k < off.length; k++) off[k] = t.ys[k]! * w + t.xs[k]!;
   return off;

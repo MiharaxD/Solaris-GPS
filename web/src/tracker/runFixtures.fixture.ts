@@ -15,8 +15,9 @@ import type { MapInfo } from "../maps";
 import { embedInFrame, resize, subImage, type Rgba } from "./image";
 import type { MinimapRegion } from "./minimap";
 import { processFrame, type ReadRect } from "./pipeline";
+import { GlobalLocator } from "./globalSearch";
 import { ImageLocator } from "./imageLocator";
-import type { Located } from "./locate";
+import { DEFAULT_MASK, type Located } from "./locate";
 import { median, sweepScale, sweepWindow, type SweepOptions } from "./scale";
 import { grayWindow, type TileReader } from "./tiles";
 
@@ -51,11 +52,11 @@ function savedRadius(map: string): number | undefined {
 
 function nodeTileReader(info: MapInfo): TileReader {
   const cache = new Map<string, Promise<Rgba | null>>();
-  return (row, col) => {
-    const key = `${row}_${col}`;
+  return (z, row, col) => {
+    const key = `${z}/${row}_${col}`;
     let p = cache.get(key);
     if (!p) {
-      const file = path.join(tilesDir, info.name, String(info.maxZoom), `${key}.webp`);
+      const file = path.join(tilesDir, info.name, String(z), `${row}_${col}.webp`);
       p = !existsSync(file) || statSync(file).size === 0
         ? Promise.resolve(null)
         : sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true }).then(({ data, info: i }) => ({
@@ -115,9 +116,13 @@ it("roda todos os fixtures", async () => {
   const infos = mapInfos();
   const readers = new Map<string, TileReader>();
   const locators = new Map<string, ImageLocator>();
+  const globals = new Map<string, GlobalLocator>();
   const radii = new Map<string, number[]>();
   const det: string[] = [row([["caso", 44], ["res", 10], ["minimapa (cx, cy, r)", 22], ["conf", 5], ["detect ms", 10], ["crop ms", 8]])];
   const scale: string[] = [row([["caso", 44], ["raio px", 8], ["NCC", 5], ["casou em (dx, dy)", 18], ["ms", 6]])];
+  const gl: string[] = [
+    row([["caso", 44], ["res", 10], ["erro px", 8], ["NCC", 5], ["margem", 7], ["pico", 8], ["certo?", 7], ["geral", 6], ["meio", 6], ["fim", 6], ["total", 6], ["carga ms", 9]]),
+  ];
   const img: string[] = [
     row([["caso", 44], ["res", 10], ["erro px", 8], ["espalh.", 8], ["NCC", 5], ["margem", 7], ["ms", 6], ["janela ms", 9]]),
   ];
@@ -191,18 +196,31 @@ it("roda todos os fixtures", async () => {
         found.push(L);
         winMs = Math.max(winMs, L.timings.window ?? 0);
       }
-      if (found.length === 0) {
-        img.push(row([[c.name, 44], [res_, 10], ["—", 8]]));
-        continue;
+      if (found.length === 0) img.push(row([[c.name, 44], [res_, 10], ["—", 8]]));
+      else {
+        const errs = found.map((L) => Math.hypot(L.px[0] - c.px![0], L.px[1] - c.px![1])).sort((a, b) => a - b);
+        let spread = 0;
+        for (const a of found) for (const b of found) spread = Math.max(spread, Math.hypot(a.px[0] - b.px[0], a.px[1] - b.px[1]));
+        const ms = found.map((L) => (L.timings.mask ?? 0) + (L.timings.template ?? 0) + (L.timings.coarse ?? 0) + (L.timings.fine ?? 0));
+        img.push(row([
+          [c.name, 44], [res_, 10], [errs[errs.length >> 1]!.toFixed(1), 8], [spread.toFixed(1), 8],
+          [Math.min(...found.map((L) => L.score)).toFixed(2), 5], [Math.min(...found.map((L) => L.margin)).toFixed(2), 7],
+          [(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(0), 6], [winMs.toFixed(0), 9],
+        ]));
       }
-      const errs = found.map((L) => Math.hypot(L.px[0] - c.px![0], L.px[1] - c.px![1])).sort((a, b) => a - b);
-      let spread = 0;
-      for (const a of found) for (const b of found) spread = Math.max(spread, Math.hypot(a.px[0] - b.px[0], a.px[1] - b.px[1]));
-      const ms = found.map((L) => (L.timings.mask ?? 0) + (L.timings.template ?? 0) + (L.timings.coarse ?? 0) + (L.timings.fine ?? 0));
-      img.push(row([
-        [c.name, 44], [res_, 10], [errs[errs.length >> 1]!.toFixed(1), 8], [spread.toFixed(1), 8],
-        [Math.min(...found.map((L) => L.score)).toFixed(2), 5], [Math.min(...found.map((L) => L.margin)).toFixed(2), 7],
-        [(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(0), 6], [winMs.toFixed(0), 9],
+
+      // global (ticket 20): sem posição anterior
+      let glob = globals.get(info.name);
+      if (!glob) globals.set(info.name, (glob = new GlobalLocator(info, tiles, loc, DEFAULT_MASK)));
+      const t0 = performance.now();
+      const G = await glob.locate(res.crop, res.region.r, saved);
+      const total = performance.now() - t0;
+      const gt = G?.timings ?? {};
+      gl.push(row([
+        [c.name, 44], [res_, 10], [G ? Math.hypot(G.px[0] - c.px[0], G.px[1] - c.px[1]).toFixed(1) : "—", 8],
+        [G ? G.score.toFixed(2) : "—", 5], [G ? G.margin.toFixed(2) : "—", 7], [G ? `${G.rank + 1}/${G.peaks}` : "—", 8], [G ? (G.confident ? "sim" : "incerto") : "—", 7],
+        [(gt.overview ?? 0).toFixed(0), 6], [(gt.mid ?? 0).toFixed(0), 6], [(gt.final ?? 0).toFixed(0), 6], [total.toFixed(0), 6],
+        [(gt.overviewLoad ?? 0).toFixed(0), 9],
       ]));
     }
   }
@@ -227,6 +245,10 @@ it("roda todos os fixtures", async () => {
       `IMAGEM (ticket 19; anterior = anotação deslocada ${prev}; erro = mediana da distância à anotação;`,
       "espalh. = maior distância entre os resultados; NCC e margem = os piores)",
       ...img,
+      "",
+      "GLOBAL (ticket 20; sem posição anterior; pico = posição do vencedor entre os picos da visão geral; certo? = margem e NCC acima dos limiares;",
+      "geral/meio/fim/total em ms; carga = montar a visão geral do mapa, só na 1ª vez)",
+      ...gl,
       "",
     ].join("\n"),
   );

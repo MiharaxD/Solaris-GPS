@@ -762,7 +762,7 @@ body.lab {
   color: var(--muted);
 }
 
-.fx-panel h3 {
+.calib-panel h3 {
   margin: 14px 0 4px;
   font-size: 13px;
 }
@@ -778,4 +778,17 @@ body.lab {
 
 .fx-plot[hidden] {
   display: none;
+}
+
+/* Posição do tracker: sólida = seguindo; tracejada = palpite incerto ou Find me procurando. */
+.trk-pos {
+  stroke: #fff;
+  stroke-width: 2;
+  fill: var(--accent);
+  fill-opacity: 0.95;
+}
+
+.trk-pos.guess {
+  stroke-dasharray: 4 3;
+  fill-opacity: 0.35;
 }
