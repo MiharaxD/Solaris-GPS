@@ -87,9 +87,14 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Camada imagem (ticket 19):** `web/src/tracker/locate.ts` (`detectCone`, `minimapPlanes`,
   `locateByImage`: grossa 4× + fina + subpixel), `imageLocator.ts` (janela 3×3 tiles com LRU,
   usada no Worker e no runner) e `planesWindow`/`lruTileReader` em `tiles.ts`. O Worker roda a
-  camada quando o frame traz `locate` (`protocol.ts`).
+  camada quando o frame traz `locate` com `prev` (`protocol.ts`).
+- **Busca global e Find me (ticket 20):** `web/src/tracker/globalSearch.ts` (`GlobalLocator`:
+  visão geral no zoom em que o minimapa tem ~12 px, só onde há terra; meio 4× maior; fim com o
+  `ImageLocator`; `confident` por margem e NCC). Roda no Worker quando `locate` vem sem `prev`.
+  UI na seção "Posição" do `trackerPanel.ts` (Achar no mapa, Find me, marcador `.trk-pos`).
+  As tiles de qualquer zoom vêm do `TileReader(z, linha, coluna)` em `tiles.ts`.
 - **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`, `scale.test.ts` e
-  `locate.test.ts`, com as imagens de `synthetic.ts`) e
+  `locate.test.ts` e `globalSearch.test.ts`, com as imagens de `synthetic.ts`) e
   `npm --prefix web run fixtures` (runner sobre `tracker/fixtures/` e `tracker/samples/`;
   config em `web/vitest.fixtures.config.ts`; `SOLARIS_DUMP=<pasta>` grava os recortes; mede a
   escala de cada print anotado e imprime a mediana; uma tabela por camada, todas com uma região

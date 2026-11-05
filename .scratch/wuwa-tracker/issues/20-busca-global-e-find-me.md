@@ -4,8 +4,8 @@
 
 **Blocked by:** 19
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Busca coarse-to-fine com tempo e acurácia medidos nos fixtures
-- [ ] Find me: clique no mapa → busca local em volta do clique → volta a seguir
-- [ ] Funciona em mapas que só têm o zoom máximo baixado (usando zooms gerados)
+- [x] Busca coarse-to-fine com tempo e acurácia medidos nos fixtures
+- [x] Find me: clique no mapa → busca local em volta do clique → volta a seguir
+- [x] Funciona em mapas que só têm o zoom máximo baixado (usando zooms gerados). A visão geral do Overworld já é o z2 gerado; teste sintético com pirâmide gerada.

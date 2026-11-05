@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–19 feitos.
+**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -44,8 +44,14 @@
 - Camada imagem (ticket 19): no Worker, com posição anterior, acha o minimapa por NCC em cinza
   numa janela 3×3 de tiles (busca ±160 px). Nos 9 prints, a 1440p e 1080p, partindo de 4
   posições anteriores até 100 px fora, acerta todos e sempre no mesmo ponto. ~25 ms por frame
-  no navegador e ~40 ms quando troca a janela. NCC 0,35–0,96 (o 204708 é o pior). Ainda não
-  tem UI: a posição inicial vem do "Find me" (ticket 20).
+  no navegador e ~40 ms quando troca a janela. NCC 0,35–0,96 (o 204708 é o pior).
+- Busca global e Find me (ticket 20): no painel Tracker, "Achar no mapa" procura no mapa
+  inteiro (Overworld: visão geral em z2, ~200–350 ms, +~100 ms pra montar a visão geral na 1ª
+  vez) e "Find me" usa o clique como posição anterior. Achada a posição, cada frame segue com a
+  camada imagem e um marcador no mapa. Nos fixtures, a global acerta 16 de 18; os 2 erros (o
+  204708, nas duas resoluções) saem "incerto" (margem ≤ 0,04 contra ≥ 0,11 nos acertos), e
+  aí a UI mostra o palpite e pede o Find me. Testado no navegador com um canvas simulando a
+  tela compartilhada; ainda não com o jogo ao vivo.
 - Os prints foram anotados em cima de teleportes/Nexus. Em 204534, 204619 e 204748 a anotação
   ficou 15–34 px fora do teleporte, e o casamento aponta pro teleporte: o erro "contra a
   anotação" do runner inclui esse ruído.
@@ -83,8 +89,8 @@
   `_1`.
 
 ## Próximo (a frente)
-- **Ticket 20** (busca global e "Find me"). Os tickets 20–23 escolhem os algoritmos pelos
-  números do runner sobre os 9 fixtures. O ticket 10 (afim por área) fica
+- **Ticket 21** (camada de referências: ícones de teleporte/Nexus no minimapa). Os tickets
+  21–23 escolhem os algoritmos pelos números do runner sobre os 9 fixtures. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
@@ -103,6 +109,11 @@
   erra. O raio detectado oscila 123–126 px a 1440p; o rastreio precisa da região salva.
 - No navegador, a frequência do rastreio e o comportamento com a aba em segundo plano ainda
   não foram medidos.
+- Seguir a posição frame a frame ainda não barra saltos: ao trocar de lugar sem "Find me", a
+  camada local pode "andar" pra um lugar parecido por perto (NCC ~0,6). Isso é o ticket 26.
+- A região do minimapa salva no navegador pode estar desatualizada (no teste, cy 178 contra
+  163 detectado); isso desloca a posição em ~12 px. "Detectar minimapa" no painel Tracker
+  corrige.
 - Os dados de entidades podem não bater com a versão atual do jogo (dump de março de 2026).
 - Categoria "Sonance Casket" inferida pelos blueprints `HookSoundBox`/`HookPullSoundBox`; não
   conferida no jogo. Nomes de espécie saem em inglês (o TextMap pt não tem essas chaves).
