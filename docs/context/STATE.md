@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 3 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 e 23 feitos; 21 e 22 em parte. Fase 2 aprovada (🛑 24). Fase 3: ticket 25 feito.
+**Fase:** Fase 3 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 e 23 feitos; 21 e 22 em parte. Fase 2 aprovada (🛑 24). Fase 3: tickets 25 e 26 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -72,6 +72,13 @@
   direção, verde/amarela/laranja pela confiança, cinza perdida; "Seguir" na prévia (arrastar o
   mapa desliga). HUD: estado, camada, confiança, Hz e ocupação do Worker. Testado com fonte
   simulada: 10 Hz, ~25–35% de um núcleo; em segundo plano manteve 9,7 Hz.
+- Suavização e saltos (ticket 26): a posição exibida passa por um Kalman de velocidade
+  constante (erro esperado pela confiança da fusão); a busca usa a medida crua. Posição nova só
+  vale a até 40 px + 150 px/s × tempo desde a última aceita; fora disso é descartada e o painel
+  avisa. Passam direto o teleporte confirmado pela busca guiada (ícone sob a seta), o Find me e
+  a busca global repetida 3 vezes no mesmo lugar (sem ícone, ~6 s perdido). Se a camada local
+  falha com ícone no centro, a busca guiada roda já no frame seguinte. Testado com sintéticos;
+  limiares ainda não conferidos com o jogo ao vivo.
 - Os prints foram anotados em cima de teleportes/Nexus. Em 204534, 204619 e 204748 a anotação
   ficou 15–34 px fora do teleporte, e o casamento aponta pro teleporte: o erro "contra a
   anotação" do runner inclui esse ruído.
@@ -109,7 +116,7 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 26 (suavização e saltos), depois 27 (pausar sem minimapa) e 28 (auto-collect). Os
+- Ticket 27 (pausar sem minimapa), depois 28 (auto-collect) e o 🛑 29. Os
   itens pendentes de 21 e 22 dependem dos prints abaixo. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
@@ -131,8 +138,8 @@
   amarelo) pega os prédios brancos, e o casamento acerta mesmo assim. Sem a máscara, o 204708
   erra. O raio detectado oscila 123–126 px a 1440p; o rastreio precisa da região salva.
 - Hz, CPU e segundo plano só foram medidos com fonte simulada; com o jogo real, na demo do 🛑 29.
-- Seguir a posição frame a frame ainda não barra saltos: ao trocar de lugar sem "Find me", a
-  camada local pode "andar" pra um lugar parecido por perto (NCC ~0,6). Isso é o ticket 26.
+- A barreira de saltos não pega um casamento errado dentro do alcance (até ~55 px por frame
+  a 10 Hz): a camada local ainda pode "andar" pra um lugar parecido por perto (NCC ~0,6).
 - A região do minimapa salva no navegador pode estar desatualizada (no teste, cy 178 contra
   163 detectado); isso desloca a posição em ~12 px. "Detectar minimapa" no painel Tracker
   corrige.

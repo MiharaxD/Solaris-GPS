@@ -102,10 +102,14 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Fusão (ticket 23):** `web/src/tracker/fuse.ts` (`fuseLocal`, `fuseGlobal`,
   `centerCandidates`; limiares em `DEFAULT_FUSE`). O Worker devolve `fused`, e o painel Tracker
   usa só ele pra posição (`showPosition`).
+- **Suavização e saltos (ticket 26):** `web/src/tracker/motion.ts` (`MotionFilter`: Kalman
+  por eixo; `JumpGate`: velocidade máxima e confirmação de salto; testes em `motion.test.ts`).
+  A sessão guarda `pos` (medida aceita, usada na busca) e `display` (suavizada, vai no
+  `track.pos`); salto descartado vem em `rejected`.
 - **Heading (ticket 22):** `web/src/tracker/heading.ts` (`arrowHeading`: eixo de simetria da
   silhueta da seta, ponta pelo lado mais longo). Roda no Worker em todo frame com recorte.
 - **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`, `scale.test.ts` e
-  `locate.test.ts`, `globalSearch.test.ts`, `references.test.ts`, `heading.test.ts` e `fuse.test.ts`, com as imagens de
+  `locate.test.ts`, `globalSearch.test.ts`, `references.test.ts`, `heading.test.ts`, `fuse.test.ts`, `motion.test.ts` e `session.test.ts`, com as imagens de
   `synthetic.ts`) e
   `npm --prefix web run fixtures` (runner sobre `tracker/fixtures/` e `tracker/samples/`;
   config em `web/vitest.fixtures.config.ts`; `SOLARIS_DUMP=<pasta>` grava os recortes; mede a

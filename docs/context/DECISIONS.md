@@ -87,6 +87,12 @@
   erros saem "incerto" e pedem Find me). A direção vem só da seta (o cone é da câmera).
   Exige: revalidar a fusão com prints de 0 e 2+ ícones (a constelação só tem teste sintético).
 
+- **Suavização por Kalman, não média exponencial** (ticket 26): a média fica sempre alguns
+  frames atrás do jogador andando; o Kalman de velocidade constante não atrasa, aceita
+  intervalos irregulares (frames pulados, aba em segundo plano) e pesa cada medida pela
+  confiança. Só a posição exibida é suavizada. Saltos grandes só passam com teleporte
+  confirmado pelo ícone, Find me ou busca global repetida no mesmo lugar.
+
 - **Fixtures são anotados clicando no mapa web** (ticket 15), a partir de um print ou do
   frame atual da tela compartilhada. Por quê: o WuWa não mostra coordenada na tela.
 
