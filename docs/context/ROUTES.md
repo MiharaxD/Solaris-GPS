@@ -100,7 +100,7 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   afim + manuais − `ignoredRefs`; `locateByRefs`: constelação ou anterior). O Worker roda quando
   `locate.refs` vem; o painel Tracker monta as refs em `setMap` e só exibe o resultado.
 - **Fusão (ticket 23):** `web/src/tracker/fuse.ts` (`fuseLocal`, `fuseGlobal`,
-  `centerCandidates`; limiares em `DEFAULT_FUSE`). O Worker devolve `fused`, e o painel Tracker
+  `guidedCandidates` e `iconAtCenter`; limiares em `DEFAULT_FUSE`). O Worker devolve `fused`, e o painel Tracker
   usa só ele pra posição (`showPosition`).
 - **Suavização e saltos (ticket 26):** `web/src/tracker/motion.ts` (`MotionFilter`: Kalman
   por eixo; `JumpGate`: velocidade máxima e confirmação de salto; testes em `motion.test.ts`).

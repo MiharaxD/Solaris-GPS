@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 3 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 e 23 feitos; 21 e 22 em parte. Fase 2 aprovada (🛑 24). Fase 3: tickets 25 e 26 feitos.
+**Fase:** Fase 3 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–21 e 23 feitos; 22 em parte. Fase 2 aprovada (🛑 24). Fase 3: tickets 25 e 26 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -42,7 +42,9 @@
   2,5× maior. Com o raio do minimapa estável, os 8 bons dão 104,4–104,8. O 204708 não mede
   (a varredura não mascara o cone).
 - Camada imagem (ticket 19): no Worker, com posição anterior, acha o minimapa por NCC em cinza
-  numa janela 3×3 de tiles (busca ±160 px). Nos 9 prints, a 1440p e 1080p, partindo de 4
+  numa janela 3×3 de tiles (busca ±160 px). A máscara tira seta, cone, pixels muito claros e os
+  ícones de teleporte/Nexus (não existem nas tiles; tirá-los subiu o NCC de 0,3 pra 0,8 em
+  prints com ícone longe). Nos 9 prints, a 1440p e 1080p, partindo de 4
   posições anteriores até 100 px fora, acerta todos e sempre no mesmo ponto. ~25 ms por frame
   no navegador e ~40 ms quando troca a janela. NCC 0,35–0,96 (o 204708 é o pior).
 - Busca global e Find me (ticket 20): no painel Tracker, "Achar no mapa" procura no mapa
@@ -52,19 +54,20 @@
   204708, nas duas resoluções) saem "incerto" (margem ≤ 0,04 contra ≥ 0,11 nos acertos), e
   aí a UI mostra o palpite e pede o Find me. Testado no navegador com um canvas simulando a
   tela compartilhada; ainda não com o jogo ao vivo.
-- Referências (ticket 21, em parte): detecta Nexus (anel, tolera a seta por cima) e teleporte
-  pela cor e forma, e calcula a posição pela referência (WutheringData + manuais). Nos 9
-  prints (todos logo após o TP, ícone sob a seta) acha o ícone do tipo certo em 17 de 18 (falha
-  no 204400 a 1080p, ícone quase todo coberto); posição a 1–9 px da camada imagem (17 px no
-  204400 a 1440p). ~8 ms/frame. Com 1 ícone precisa da posição anterior; a constelação (2+)
-  só foi testada com dados sintéticos. O painel só exibe o resultado; a fusão é o ticket 23.
+- Referências (ticket 21): detecta Nexus (anel; perto do centro tolera a seta, longe exige 70%
+  do anel) e teleporte pela cor e forma, e calcula a posição pela referência (WutheringData +
+  manuais). 18 prints do Overworld: 9 logo após o TP (ícone sob a seta) e 9 com ícone longe.
+  Tipo certo em 35 de 36 casos (falha no 204400 a 1080p, ícone quase todo coberto); seguindo,
+  a posição sai a 2–29 px da anotação (ruído da anotação incluso). O print com 2 teleportes sai
+  por constelação (3–6 px). ~8 ms/frame. Com 1 ícone precisa da posição anterior.
 - Heading (ticket 22, em parte): direção pela simetria da seta, 1–9 ms. Sem direção anotada
   nos prints; parado o cone aponta pra frente, e seta e cone ficam a ≤ 9,5° onde o cone foi bem
   detectado. O painel mostra a direção na linha de tempos da prévia.
 - Fusão (ticket 23): o painel segue a posição fundida (camada, confiança e o que foi
-  descartado aparecem no status). Nos fixtures: seguindo, imagem e ícones concordam em 17 de 18
-  (no outro só há imagem); sem posição anterior, a busca guiada resolve os 18, inclusive o
-  204708 em que a global errava (~200–420 ms).
+  descartado aparecem no status). Nos 36 casos: seguindo, imagem e ícones concordam em 35 (no
+  outro só há imagem); sem posição anterior, acerta 35 (~100–210 ms). A busca guiada usa os
+  ícones à vista: sob a seta, só ele; 2+ que formam constelação, 1 candidata; senão cada ícone
+  × os teleportes do tipo dele.
 - Rastreio ao vivo (ticket 25): o Worker lê os frames direto (MediaStreamTrackProcessor), pega
   sempre o mais recente e processa na frequência escolhida (5–30 Hz, padrão 10). Sozinho:
   procura no mapa ao começar, segue em volta da última posição (±64 px firme, ±160 depois de
@@ -76,7 +79,8 @@
   constante (erro esperado pela confiança da fusão); a busca usa a medida crua. Posição nova só
   vale a até 40 px + 150 px/s × tempo desde a última aceita; fora disso é descartada e o painel
   avisa. Passam direto o teleporte confirmado pela busca guiada (ícone sob a seta), o Find me e
-  a busca global repetida 3 vezes no mesmo lugar (sem ícone, ~6 s perdido). Se a camada local
+  a busca global repetida 3 vezes no mesmo lugar (sem ícone, ~6 s perdido). A busca guiada só
+  passa direto com ícone sob a seta ou constelação; com 1 ícone longe, vale como global. Se a camada local
   falha com ícone no centro, a busca guiada roda já no frame seguinte. Testado com sintéticos;
   limiares ainda não conferidos com o jogo ao vivo.
 - Os prints foram anotados em cima de teleportes/Nexus. Em 204534, 204619 e 204748 a anotação
@@ -116,23 +120,27 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 27 (pausar sem minimapa), depois 28 (auto-collect) e o 🛑 29. Os
-  itens pendentes de 21 e 22 dependem dos prints abaixo. O ticket 10 (afim por área) fica
+- Ticket 27 (pausar sem minimapa), depois 28 (auto-collect) e o 🛑 29. O item pendente do
+  22 depende de direção anotada nos prints. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
 
 ## Depende do usuário
-- **Bloqueante pro ticket 21:** prints com ícones de teleporte/Nexus LONGE do centro (0, 1 e
-  2+ ícones), andando um pouco depois do teleporte. Os 9 fixtures do Overworld foram tirados em
-  cima do teleporte (ícone embaixo da seta): só cobrem o caso especial. Pedido em 2026-11-04.
-  Também ajudam: interiores/cavernas (confirmar que a escala não muda) e outros mapas.
+- Prints que ainda ajudam: sem nenhum ícone à vista, interiores/cavernas (confirmar que a
+  escala não muda) e outros mapas. O `overworld-20261105-025949` é cópia do 025231 (pode
+  apagar).
 - Pro ticket 22: anotar a direção da seta (campo "Direção" do painel Fixture) em alguns prints.
 - Os sprites do minimapa (teleporte, Nexus e seta) serão recortados desses prints, não pedidos
   à parte. Escala observada a 1440p: Nexus ~34 px, teleporte ~14×34 px.
 - Teleportes à mão nos 3 mapas sem dados (pelo "+ Novo marcador").
 
 ## Limitações conhecidas
+- "Medir escala" aceita medições ruins: com cone ou ícones no minimapa dá 24–56 px, e salvar
+  essas derruba a mediana (já caiu pra 79; revertido pra 104,3). Medir só em prints limpos.
+- 030047 (mapa claro, pouco contraste): a 1440p a detecção do minimapa falha (borda clara
+  sobre o céu; a região salva resolve) e, sem posição anterior a 1080p, a guiada e a global
+  caem em lugares errados (a global com "sim").
 - O cone de visão (claro, ~60°, gira com a câmera) é detectado pelos degraus de brilho nas
   bordas mais o contraste do setor. Acerta 8 dos 9 prints; no 204214 (cone sutil sobre chão
   amarelo) pega os prédios brancos, e o casamento acerta mesmo assim. Sem a máscara, o 204708
