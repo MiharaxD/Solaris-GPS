@@ -77,8 +77,10 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 ## Tracker no navegador (Fases 2–3: tickets 17–28)
 - **Ir direto para:** `web/src/tracker/pipeline.ts` (`processFrame`, o mesmo no Worker e no
   runner), `minimap.ts` (detecção e recorte), `image.ts` (RGBA/cinza, resize, embed),
-  `worker.ts` + `protocol.ts` e `web/src/trackerPanel.ts` (captura, prévia, ajuste salvo por
-  resolução). Padrões de tela/minimapa do `config.json` chegam via `define`
+  `session.ts` (`TrackSession`: estado do rastreio por frame; testes em `session.test.ts`),
+  `worker.ts` (lê o MediaStreamTrackProcessor, frame mais recente, Hz e ocupação) +
+  `protocol.ts`, `web/src/trackerPanel.ts` (captura, configuração, comandos, HUD) e
+  `web/src/trackerView.ts` (seta no mapa, cor por confiança, Seguir). Padrões de tela/minimapa do `config.json` chegam via `define`
   (`web/src/config.ts`).
 - **Escala (ticket 18):** `web/src/tracker/match.ts` (NCC mascarada, `resizeGray` por área),
   `scale.ts` (`sweepScale`: passada grossa e fina), `tiles.ts` (`grayWindow` das tiles do zoom
@@ -99,7 +101,7 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `locate.refs` vem; o painel Tracker monta as refs em `setMap` e só exibe o resultado.
 - **Fusão (ticket 23):** `web/src/tracker/fuse.ts` (`fuseLocal`, `fuseGlobal`,
   `centerCandidates`; limiares em `DEFAULT_FUSE`). O Worker devolve `fused`, e o painel Tracker
-  usa só ele pra posição (`onPosition`).
+  usa só ele pra posição (`showPosition`).
 - **Heading (ticket 22):** `web/src/tracker/heading.ts` (`arrowHeading`: eixo de simetria da
   silhueta da seta, ponta pelo lado mais longo). Roda no Worker em todo frame com recorte.
 - **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`, `scale.test.ts` e

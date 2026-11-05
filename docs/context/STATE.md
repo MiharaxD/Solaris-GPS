@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 3 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 e 23 feitos; 21 e 22 em parte. Fase 2 aprovada (🛑 24); Fase 3 em andamento.
+**Fase:** Fase 3 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 e 23 feitos; 21 e 22 em parte. Fase 2 aprovada (🛑 24). Fase 3: ticket 25 feito.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -65,6 +65,13 @@
   descartado aparecem no status). Nos fixtures: seguindo, imagem e ícones concordam em 17 de 18
   (no outro só há imagem); sem posição anterior, a busca guiada resolve os 18, inclusive o
   204708 em que a global errava (~200–420 ms).
+- Rastreio ao vivo (ticket 25): o Worker lê os frames direto (MediaStreamTrackProcessor), pega
+  sempre o mais recente e processa na frequência escolhida (5–30 Hz, padrão 10). Sozinho:
+  procura no mapa ao começar, segue em volta da última posição (±64 px firme, ±160 depois de
+  falha), "perdido" após 1,5 s sem posição e busca global a cada 2 s. No mapa: seta girada pela
+  direção, verde/amarela/laranja pela confiança, cinza perdida; "Seguir" na prévia (arrastar o
+  mapa desliga). HUD: estado, camada, confiança, Hz e ocupação do Worker. Testado com fonte
+  simulada: 10 Hz, ~25–35% de um núcleo; em segundo plano manteve 9,7 Hz.
 - Os prints foram anotados em cima de teleportes/Nexus. Em 204534, 204619 e 204748 a anotação
   ficou 15–34 px fora do teleporte, e o casamento aponta pro teleporte: o erro "contra a
   anotação" do runner inclui esse ruído.
@@ -102,7 +109,8 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 25 (rastreio ao vivo). Os itens pendentes de 21 e 22 dependem dos prints abaixo. O ticket 10 (afim por área) fica
+- Ticket 26 (suavização e saltos), depois 27 (pausar sem minimapa) e 28 (auto-collect). Os
+  itens pendentes de 21 e 22 dependem dos prints abaixo. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
@@ -122,8 +130,7 @@
   bordas mais o contraste do setor. Acerta 8 dos 9 prints; no 204214 (cone sutil sobre chão
   amarelo) pega os prédios brancos, e o casamento acerta mesmo assim. Sem a máscara, o 204708
   erra. O raio detectado oscila 123–126 px a 1440p; o rastreio precisa da região salva.
-- No navegador, a frequência do rastreio e o comportamento com a aba em segundo plano ainda
-  não foram medidos.
+- Hz, CPU e segundo plano só foram medidos com fonte simulada; com o jogo real, na demo do 🛑 29.
 - Seguir a posição frame a frame ainda não barra saltos: ao trocar de lugar sem "Find me", a
   camada local pode "andar" pra um lugar parecido por perto (NCC ~0,6). Isso é o ticket 26.
 - A região do minimapa salva no navegador pode estar desatualizada (no teste, cy 178 contra
