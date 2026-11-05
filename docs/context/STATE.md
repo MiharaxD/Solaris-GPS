@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 feitos; 21 e 22 em parte.
+**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 e 23 feitos; 21 e 22 em parte. **Parado no 🛑 24** (checkpoint da Fase 2).
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -61,6 +61,10 @@
 - Heading (ticket 22, em parte): direção pela simetria da seta, 1–9 ms. Sem direção anotada
   nos prints; parado o cone aponta pra frente, e seta e cone ficam a ≤ 9,5° onde o cone foi bem
   detectado. O painel mostra a direção na linha de tempos da prévia.
+- Fusão (ticket 23): o painel segue a posição fundida (camada, confiança e o que foi
+  descartado aparecem no status). Nos fixtures: seguindo, imagem e ícones concordam em 17 de 18
+  (no outro só há imagem); sem posição anterior, a busca guiada resolve os 18, inclusive o
+  204708 em que a global errava (~200–420 ms).
 - Os prints foram anotados em cima de teleportes/Nexus. Em 204534, 204619 e 204748 a anotação
   ficou 15–34 px fora do teleporte, e o casamento aponta pro teleporte: o erro "contra a
   anotação" do runner inclui esse ruído.
@@ -98,8 +102,8 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 21 espera prints (abaixo). Seguir com o que dá: ticket 22 (heading pela seta) e o
-  que não depender de prints novos. O ticket 10 (afim por área) fica
+- 🛑 Ticket 24: mostrar as tabelas do runner e esperar o ok do usuário antes da Fase 3.
+  Os itens pendentes de 21 e 22 dependem dos prints abaixo. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).

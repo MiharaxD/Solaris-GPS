@@ -79,6 +79,14 @@
   Exige: um raio estável na tela. A detecção oscila 123–126 px a 1440p (até 3% de escala), então
   o rastreio deve usar a região ajustada/salva, não redetectar a cada frame.
 
+- **Algoritmos do tracker (Fase 2, escolhidos pelos 9 fixtures; tabelas no runner):** posição
+  pela camada imagem (NCC em cinza, cone mascarado, ~25 ms/frame), conferida pelos ícones
+  (referências) quando houver; concordando a ≤ 20 px vale a imagem, que é mais precisa (1–9
+  px de diferença entre as duas). Sem posição anterior: com ícone no centro (logo após o TP), a
+  busca guiada pelos teleportes do tipo (18 de 18); sem ícone, a busca global (16 de 18, os 2
+  erros saem "incerto" e pedem Find me). A direção vem só da seta (o cone é da câmera).
+  Exige: revalidar a fusão com prints de 0 e 2+ ícones (a constelação só tem teste sintético).
+
 - **Fixtures são anotados clicando no mapa web** (ticket 15), a partir de um print ou do
   frame atual da tela compartilhada. Por quê: o WuWa não mostra coordenada na tela.
 

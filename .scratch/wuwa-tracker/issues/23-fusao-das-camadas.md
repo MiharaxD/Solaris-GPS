@@ -4,8 +4,8 @@
 
 **Blocked by:** 20, 21
 
-**Status:** ready-for-agent
+**Status:** done (revalidar quando chegarem prints com 0 e 2+ ícones)
 
-- [ ] Regra de coerência entre camadas com limiar configurável
-- [ ] Tabela: referências, imagem e combinada (erro px, ms/frame)
-- [ ] Decisão de algoritmos documentada com base nos números
+- [x] Regra de coerência entre camadas com limiar configurável (`DEFAULT_FUSE` em fuse.ts)
+- [x] Tabela: referências, imagem e combinada (erro px, ms/frame)
+- [x] Decisão de algoritmos documentada com base nos números (DECISIONS.md)
