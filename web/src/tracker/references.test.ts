@@ -71,8 +71,11 @@ describe("refPoints", () => {
 });
 
 describe("detectIcons", () => {
-  /** Recorte 252×252 (raio 126) com fundo escuro, um Nexus (anel) e um teleporte (pilha). */
-  function scene(): Rgba {
+  /**
+   * Recorte 252×252 (raio 126) com fundo escuro, um Nexus (anel) em (nx, ny) com a metade de cima
+   * coberta por um bloco amarelo e um teleporte (pilha) em (-50, 20).
+   */
+  function scene(nx: number, ny: number): Rgba {
     const W = 252;
     const data = new Uint8ClampedArray(W * W * 4);
     const put = (x: number, y: number, rgb: [number, number, number]) => {
@@ -88,27 +91,33 @@ describe("detectIcons", () => {
       data[i * 4 + 2] = 60;
       data[i * 4 + 3] = 255;
     }
-    // Nexus em (+40, -30): anel de raio 21,5 (borda azul, miolo branco-azulado)
+    // Nexus: anel de raio 21,5 (borda azul, miolo branco-azulado)
     for (let a = 0; a < 360; a += 0.5) {
       const t = (a * Math.PI) / 180;
       for (const [dr, rgb] of [[-1, [60, 155, 200]], [0, [200, 225, 240]], [1, [60, 155, 200]]] as const) {
-        put(126 + 40 + (21.5 + dr) * Math.cos(t), 126 - 30 + (21.5 + dr) * Math.sin(t), rgb as [number, number, number]);
+        put(126 + nx + (21.5 + dr) * Math.cos(t), 126 + ny + (21.5 + dr) * Math.sin(t), rgb as [number, number, number]);
       }
     }
     // teleporte em (-50, 20): contorno azul 14×36
     for (let y = -18; y <= 18; y++) for (const x of [-7, 7]) put(126 - 50 + x, 126 + 20 + y, [60, 155, 200]);
     for (let x = -7; x <= 7; x++) for (const y of [-18, 18]) put(126 - 50 + x, 126 + 20 + y, [60, 155, 200]);
-    // seta amarela cobrindo metade do anel
-    for (let y = -30; y <= 0; y++) for (let x = 20; x <= 70; x++) put(126 + x, 126 - 30 + y, [240, 210, 60]);
+    // bloco amarelo cobrindo a metade de cima do anel
+    for (let y = -30; y <= 0; y++) for (let x = -30; x <= 30; x++) put(126 + nx + x, 126 + ny + y, [240, 210, 60]);
     return { width: W, height: W, data };
   }
 
-  it("acha o Nexus coberto pela metade e o teleporte", () => {
-    const icons = detectIcons(scene(), 126);
+  it("acha o Nexus coberto pela seta (perto do centro) e o teleporte", () => {
+    const icons = detectIcons(scene(10, -8), 126);
     const n = icons.find((i) => i.kind === "nexus")!;
     const t = icons.find((i) => i.kind === "beacon")!;
     expect(icons).toHaveLength(2);
-    expect(Math.hypot(n.dx - 40.5, n.dy + 29.5)).toBeLessThan(1.5);
+    expect(Math.hypot(n.dx - 10.5, n.dy + 7.5)).toBeLessThan(1.5);
     expect(Math.hypot(t.dx + 49.5, t.dy - 20.5)).toBeLessThan(1.5);
+  });
+
+  it("longe da seta, meio anel não é Nexus", () => {
+    const icons = detectIcons(scene(40, -60), 126);
+    expect(icons.filter((i) => i.kind === "nexus")).toHaveLength(0);
+    expect(icons.filter((i) => i.kind === "beacon")).toHaveLength(1);
   });
 });

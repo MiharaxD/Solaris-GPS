@@ -2,7 +2,8 @@
  * Ícones de teleporte e Nexus no minimapa (ticket 21), pela cor e pela forma. Os ícones têm um
  * azul-claro saturado (~RGB 60,155,200) que o terreno do minimapa não tem.
  *  - Nexus: anel de ~21,5 px de raio a 1440p (raio do minimapa 126), achado por Hough com raio
- *    fixo. Tolera a seta por cima: basta ~30% do anel visível.
+ *    fixo. Perto do centro tolera a seta por cima (basta ~30% do anel); longe dela o anel aparece
+ *    inteiro, e exigir ~70% evita que o Hough "ache" um anel encostado num teleporte.
  *  - Teleporte: "pilha" vertical ~14×36 px; o que sobra de azul depois dos anéis, agrupado.
  * Código puro: roda no Worker e no runner.
  */
@@ -23,13 +24,17 @@ export interface IconOptions {
   /** Raio do minimapa a que as medidas abaixo se referem (1440p). */
   refRadius: number;
   nexusRadius: number;
-  /** Fração mínima do anel (36 setores) com azul pra aceitar um Nexus. */
+  /** Fração mínima do anel (36 setores) com azul pra aceitar um Nexus que a seta pode cobrir. */
   minRing: number;
+  /** Idem, com o centro do anel além de `arrowZone` (a seta não alcança o anel). */
+  minRingFar: number;
+  /** Raio em volta do centro (1440p) em que a seta pode cobrir parte do anel. */
+  arrowZone: number;
   /** Pixels azuis mínimos (na escala de referência) pra aceitar um teleporte. */
   minBeaconPixels: number;
 }
 
-export const DEFAULT_ICONS: IconOptions = { refRadius: 126, nexusRadius: 21.5, minRing: 0.3, minBeaconPixels: 18 };
+export const DEFAULT_ICONS: IconOptions = { refRadius: 126, nexusRadius: 21.5, minRing: 0.3, minRingFar: 0.7, arrowZone: 30, minBeaconPixels: 18 };
 
 /**
  * Cor dos ícones (só dentro da máscara do recorte): o azul da borda e o branco-azulado do
@@ -86,8 +91,9 @@ export function detectIcons(crop: Rgba, r: number, opt: IconOptions = DEFAULT_IC
     const x = i % W;
     const y = (i - x) / W;
     if (nexus.some((n) => Math.hypot(n.x - x, n.y - y) < 2 * RN)) continue;
-    const ring = ringCoverage(mask, W, H, x, y, RN);
-    if (ring >= opt.minRing) {
+    const ring = ringCoverage(mask, crop, x, y, RN);
+    const far = Math.hypot(x - c, y - c) > opt.arrowZone * k;
+    if (ring >= (far ? opt.minRingFar : opt.minRing)) {
       const fit = refineCenter(mask, W, H, x, y, RN);
       nexus.push(fit);
       out.push({ kind: "nexus", dx: fit.x - c, dy: fit.y - c, score: ring });
@@ -140,33 +146,45 @@ export function detectIcons(crop: Rgba, r: number, opt: IconOptions = DEFAULT_IC
       y0 = Math.min(y0, y);
       y1 = Math.max(y1, y);
     }
-    // forma da pilha: mais alta que larga e do tamanho esperado (tolerando o corte pela seta)
+    // forma da pilha: do tamanho esperado (~17×43 a 1440p; com o brilho de destaque, até ~24×50),
+    // tolerando o corte pela seta
     const bw = (x1 - x0 + 1) / k;
     const bh = (y1 - y0 + 1) / k;
-    if (bw > 24 || bh > 44 || bh < 8) continue;
+    if (bw > 28 || bh > 54 || bh < 8) continue;
     out.push({ kind: "beacon", dx: (x0 + x1) / 2 - c, dy: (y0 + y1) / 2 - c, score: Math.min(1, comp.length / (minPx * 4)) });
   }
   return out;
 }
 
-/** Fração dos 36 setores do anel (raio ±1,5 px) que têm azul. */
-function ringCoverage(mask: Uint8Array, W: number, H: number, cx: number, cy: number, R: number): number {
+/**
+ * Fração dos 36 setores do anel (raio ±1,5 px) que têm azul, contando só os setores dentro do
+ * minimapa (um Nexus cortado pela borda não perde pontos pelo que não aparece).
+ */
+function ringCoverage(mask: Uint8Array, crop: Rgba, cx: number, cy: number, R: number): number {
+  const W = crop.width;
+  const H = crop.height;
   const SECT = 36;
   const hit = new Uint8Array(SECT);
+  const seen = new Uint8Array(SECT);
   const r0 = Math.floor(R - 1.5);
   const r1 = Math.ceil(R + 1.5);
   for (let y = Math.max(0, cy - r1); y <= Math.min(H - 1, cy + r1); y++) {
     for (let x = Math.max(0, cx - r1); x <= Math.min(W - 1, cx + r1); x++) {
-      if (!mask[y * W + x]) continue;
       const d = Math.hypot(x - cx, y - cy);
       if (d < r0 || d > r1) continue;
       const s = Math.floor(((Math.atan2(y - cy, x - cx) + Math.PI) / (2 * Math.PI)) * SECT) % SECT;
-      hit[s] = 1;
+      if (crop.data[(y * W + x) * 4 + 3] !== 0) seen[s] = 1;
+      if (mask[y * W + x]) hit[s] = 1;
     }
   }
   let n = 0;
-  for (const v of hit) n += v;
-  return n / SECT;
+  let v = 0;
+  for (let i = 0; i < SECT; i++) {
+    n += hit[i]!;
+    v += seen[i]!;
+  }
+  // metade do anel fora do minimapa: pouco pra dizer que é anel
+  return v < SECT / 2 ? 0 : n / v;
 }
 
 /** Ajuste fino do centro (passo de 0,25 px): minimiza o desvio das distâncias dos pixels do anel ao raio. */
