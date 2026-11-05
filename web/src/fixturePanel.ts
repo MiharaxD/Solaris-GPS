@@ -1,6 +1,10 @@
 import L from "leaflet";
+import { loadMapData, minimapScaleOf, patchMapData, type MinimapScale } from "./mapData";
 import type { MapInfo } from "./maps";
 import type { MapView } from "./mapView";
+import { median, type ScaleSample, type ScaleSweep } from "./tracker/scale";
+import type { ScaleRequest, ScaleResponse } from "./tracker/scaleWorker";
+import { loadRegion } from "./trackerPanel";
 
 function h<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -50,10 +54,13 @@ function stamp(d: Date): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
+/** Medições guardadas por mapa (a escala salva é a mediana). */
+const MAX_SAMPLES = 15;
+
 /**
  * Modo "anotar fixture": abre um print de tela cheia, o usuário clica no mapa web onde estava e
- * grava imagem + anotação via API local. Capturar da tela compartilhada chega no ticket 17
- * (`setFrameSource`).
+ * grava imagem + anotação via API local (ou captura o frame da tela compartilhada). Com print e
+ * posição, também mede a escala minimapa→mapa (ticket 18) e grava em data/maps/<name>.json.
  */
 export class FixturePanel {
   readonly root: HTMLElement;
@@ -77,6 +84,17 @@ export class FixturePanel {
   private readonly status = h("p", { className: "calib-status", role: "status" } as Partial<HTMLParagraphElement>);
   private readonly count = h("p", { className: "calib-hint" });
 
+  private scaleWorker: Worker | null = null;
+  private measuring = false;
+  private sweep: ScaleSweep | null = null;
+  private savedScale: MinimapScale | null = null;
+  private readonly measureBtn = h("button", { type: "button", className: "secondary", textContent: "Medir escala", disabled: true });
+  private readonly saveScaleBtn = h("button", { type: "button", textContent: "Salvar escala", disabled: true });
+  private readonly resetScaleBtn = h("button", { type: "button", className: "link", textContent: "zerar medições" });
+  private readonly scaleInfo = h("span", {});
+  private readonly scaleResult = h("p", { className: "calib-status", role: "status" } as Partial<HTMLParagraphElement>);
+  private readonly plot = h("canvas", { className: "fx-plot", width: 560, height: 160 });
+
   constructor(private readonly view: MapView) {
     for (const [v, label] of [["0", "0"], ["1", "1"], ["2", "2 ou mais"]] as const) {
       this.icons.append(h("option", { value: v, textContent: label }));
@@ -92,6 +110,9 @@ export class FixturePanel {
     this.captureBtn.title = "Disponível quando o compartilhamento de tela existir (ticket 17)";
     this.captureBtn.addEventListener("click", () => void this.capture());
     this.saveBtn.addEventListener("click", () => void this.save());
+    this.measureBtn.addEventListener("click", () => void this.measure());
+    this.saveScaleBtn.addEventListener("click", () => void this.saveScale(false));
+    this.resetScaleBtn.addEventListener("click", () => void this.saveScale(true));
     const close = h("button", { type: "button", className: "calib-close", textContent: "✕", title: "Fechar" });
     close.addEventListener("click", () => this.toggle(false));
 
@@ -114,13 +135,25 @@ export class FixturePanel {
       h("div", { className: "calib-actions" }, this.saveBtn),
       this.status,
       this.count,
+      h("h3", { textContent: "Escala do minimapa" }),
+      h("p", {
+        className: "calib-hint",
+        textContent: "Com um print aberto e a posição marcada, testa vários tamanhos do minimapa sobre o mapa e mostra o casamento (NCC) de cada um. " +
+          "Salve 3 ou mais medições boas: vale a mediana.",
+      }),
+      h("div", { className: "calib-actions" }, this.measureBtn, this.saveScaleBtn),
+      this.plot,
+      this.scaleResult,
+      h("p", { className: "calib-hint" }, this.scaleInfo, " ", this.resetScaleBtn),
     );
     this.preview.hidden = true;
+    this.plot.hidden = true;
 
     view.leaflet.on("click", (e) => {
       if (!this.open) return;
       const p = this.view.toPixel(e.latlng);
       this.px = [Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10];
+      this.clearSweep();
       this.marker.setLatLng(e.latlng).addTo(this.view.leaflet);
       this.render();
     });
@@ -137,6 +170,7 @@ export class FixturePanel {
     if (this.open) {
       if (this.px) this.marker.addTo(this.view.leaflet);
       void this.refreshCount();
+      void this.refreshScale();
     } else {
       this.marker.remove();
     }
@@ -148,7 +182,13 @@ export class FixturePanel {
       this.px = null;
       this.marker.remove();
     }
+    const changed = this.info?.name !== info.name;
     this.info = info;
+    if (changed) {
+      this.clearSweep();
+      this.savedScale = null;
+      if (this.open) void this.refreshScale();
+    }
     this.render();
   }
 
@@ -183,6 +223,7 @@ export class FixturePanel {
     this.preview.src = this.previewUrl;
     this.preview.hidden = false;
     this.status.textContent = "";
+    this.clearSweep();
     this.render();
   }
 
@@ -193,6 +234,166 @@ export class FixturePanel {
       ? `Posição: px ${Math.round(this.px[0])}, ${Math.round(this.px[1])} em ${this.info?.name ?? "?"}`
       : "Clique no mapa onde você estava.";
     this.saveBtn.disabled = !(img && this.px && this.info);
+    this.measureBtn.disabled = this.measuring || !(img && this.px && this.info);
+    this.measureBtn.textContent = this.measuring ? "Medindo…" : "Medir escala";
+    this.saveScaleBtn.disabled = this.measuring || !this.sweep?.best;
+    const sv = this.savedScale;
+    const n = sv?.samples.length ?? 0;
+    this.scaleInfo.textContent = sv
+      ? `Salvo em ${this.info?.name ?? "?"}: raio ${sv.radiusPx.toFixed(1)} px (${n} ${n === 1 ? "medição" : "medições"}).`
+      : `Sem escala salva em ${this.info?.name ?? "?"}.`;
+    this.resetScaleBtn.hidden = !sv;
+  }
+
+  private clearSweep(): void {
+    this.sweep = null;
+    this.plot.hidden = true;
+    this.scaleResult.textContent = "";
+  }
+
+  private async refreshScale(): Promise<void> {
+    const name = this.info?.name;
+    if (!name) return;
+    try {
+      const sv = minimapScaleOf(await loadMapData(name));
+      if (this.info?.name === name) this.savedScale = sv;
+    } catch {
+      /* API indisponível: só não mostra o valor salvo */
+    }
+    this.render();
+  }
+
+  private async measure(): Promise<void> {
+    const img = this.image;
+    const px = this.px;
+    const info = this.info;
+    if (!img || !px || !info || this.measuring) return;
+    this.measuring = true;
+    this.clearSweep();
+    this.scaleResult.textContent = "Medindo (alguns segundos)…";
+    this.render();
+    try {
+      const bitmap = await createImageBitmap(img.blob);
+      const saved = loadRegion(bitmap.width, bitmap.height);
+      const req: ScaleRequest = {
+        bitmap,
+        info,
+        px,
+        region: saved && !saved.auto ? { cx: saved.cx, cy: saved.cy, r: saved.r, shape: saved.shape } : null,
+        center: this.savedScale?.radiusPx,
+      };
+      this.scaleWorker ??= new Worker(new URL("./tracker/scaleWorker.ts", import.meta.url), { type: "module" });
+      const worker = this.scaleWorker;
+      const res = await new Promise<ScaleResponse>((resolve) => {
+        worker.onmessage = (ev: MessageEvent<ScaleResponse>) => resolve(ev.data);
+        worker.onerror = (ev) => resolve({ ok: false, message: ev.message || "erro no Worker" });
+        worker.postMessage(req, [bitmap]);
+      });
+      if (!res.ok) throw new Error(res.message);
+      if (this.px !== px || this.image !== img) return; // mudou no meio
+      this.sweep = res.sweep;
+      this.showSweep(res.sweep, res.r, res.ms);
+    } catch (e) {
+      this.scaleResult.textContent = `Não mediu (${(e as Error).message}).`;
+    } finally {
+      this.measuring = false;
+      this.render();
+    }
+  }
+
+  private showSweep(sw: ScaleSweep, r: number, ms: number): void {
+    const b = sw.best;
+    if (!b) {
+      this.scaleResult.textContent = "Nenhuma escala casou.";
+      return;
+    }
+    const notes: string[] = [];
+    if (b.score < 0.5) notes.push("casamento fraco: confira a posição ou use outro print");
+    const sv = this.savedScale?.radiusPx;
+    if (sv && Math.abs(b.radiusPx / sv - 1) > 0.08) notes.push(`longe do salvo (${sv.toFixed(1)})`);
+    this.scaleResult.textContent =
+      `Raio ${b.radiusPx.toFixed(1)} px do mapa (minimapa com raio ${r.toFixed(0)} px na tela: ${(b.radiusPx / r).toFixed(3)} px do mapa por px). ` +
+      `NCC ${b.score.toFixed(2)}; casou a (${b.dx.toFixed(0)}, ${b.dy.toFixed(0)}) px da posição marcada. ${(ms / 1000).toFixed(1)} s.` +
+      (notes.length ? ` ⚠ ${notes.join("; ")}.` : "");
+    this.drawPlot(sw.samples, b.radiusPx, sv);
+  }
+
+  /** NCC × raio (escala log): passada grossa em cinza, fina em amarelo; tracejado = salvo. */
+  private drawPlot(samples: ScaleSample[], best: number, saved: number | undefined): void {
+    const cv = this.plot;
+    const ctx = cv.getContext("2d");
+    if (!ctx || samples.length === 0) return;
+    cv.hidden = false;
+    const W = cv.width;
+    const H = cv.height;
+    const pad = { l: 40, r: 10, t: 10, b: 26 };
+    const lr = samples.map((s) => Math.log(s.radiusPx));
+    const x0 = Math.min(...lr);
+    const x1 = Math.max(...lr);
+    const ys = samples.map((s) => s.score);
+    const y0 = Math.min(0, ...ys);
+    const y1 = Math.max(...ys, 0.1);
+    const X = (r: number) => pad.l + ((Math.log(r) - x0) / (x1 - x0 || 1)) * (W - pad.l - pad.r);
+    const Y = (v: number) => H - pad.b - ((v - y0) / (y1 - y0 || 1)) * (H - pad.t - pad.b);
+    const css = getComputedStyle(this.root);
+    const muted = css.getPropertyValue("--muted").trim() || "#9fb0bc";
+    const accent = css.getPropertyValue("--accent").trim() || "#f5c542";
+    const vline = (x: number, color: string, dash: number[]) => {
+      ctx.setLineDash(dash);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(X(x), pad.t);
+      ctx.lineTo(X(x), H - pad.b);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+    const curve = (list: ScaleSample[], color: string, width: number) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      list.forEach((s, i) => (i ? ctx.lineTo(X(s.radiusPx), Y(s.score)) : ctx.moveTo(X(s.radiusPx), Y(s.score))));
+      ctx.stroke();
+    };
+    ctx.clearRect(0, 0, W, H);
+    ctx.font = "16px system-ui, sans-serif";
+    ctx.fillStyle = muted;
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, Y(0));
+    ctx.lineTo(W - pad.r, Y(0));
+    ctx.stroke();
+    ctx.textAlign = "right";
+    ctx.fillText(y1.toFixed(1), pad.l - 6, Y(y1) + 6);
+    ctx.fillText("0", pad.l - 6, Y(0) + 6);
+    ctx.textAlign = "center";
+    for (const t of [Math.exp(x0), best, Math.exp(x1)]) ctx.fillText(t.toFixed(0), X(t), H - 6);
+    if (saved && saved >= Math.exp(x0) && saved <= Math.exp(x1)) vline(saved, muted, [6, 4]);
+    vline(best, accent, []);
+    curve(samples.filter((s) => s.pass === "coarse"), muted, 2);
+    curve(samples.filter((s) => s.pass === "fine"), accent, 3);
+  }
+
+  /** Acrescenta a medição atual às salvas (ou zera) e grava a mediana em data/maps. */
+  private async saveScale(reset: boolean): Promise<void> {
+    const info = this.info;
+    const b = this.sweep?.best;
+    if (!info || (!reset && !b)) return;
+    if (reset && !window.confirm(`Apagar a escala salva de ${info.name}?`)) return;
+    try {
+      const fresh = minimapScaleOf(await loadMapData(info.name));
+      const samples = reset || !b ? [] : [...(fresh?.samples ?? []), Math.round(b.radiusPx * 10) / 10].slice(-MAX_SAMPLES);
+      const radiusPx = median(samples);
+      const minimapScale = radiusPx === null ? undefined : { radiusPx: Math.round(radiusPx * 10) / 10, samples };
+      await patchMapData(info.name, { minimapScale });
+      this.savedScale = minimapScale ?? null;
+      this.sweep = null;
+      this.scaleResult.textContent = reset ? "Medições apagadas." : `Salvo em data/maps/${info.name}.json.`;
+    } catch (e) {
+      this.scaleResult.textContent = `Não salvou (${(e as Error).message}).`;
+    }
+    this.render();
   }
 
   private async refreshCount(): Promise<void> {

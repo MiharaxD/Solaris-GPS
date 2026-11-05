@@ -31,6 +31,25 @@ export interface MapDataV1 extends MapData {
   ignoredRefs?: string[];
   /** Teleportes/Nexus cadastrados à mão (pixel do zoom máximo), referência do tracker. */
   manualMarkers?: ManualMarker[];
+  minimapScale?: MinimapScale;
+}
+
+/**
+ * Escala minimapa→mapa (ticket 18): raio do minimapa em pixel do zoom máximo. Vale pra qualquer
+ * resolução e escala de UI (px do mapa por px do minimapa = radiusPx / raio na tela).
+ */
+export interface MinimapScale {
+  /** Mediana de `samples`. */
+  radiusPx: number;
+  /** Medições aceitas (uma por print), as mais recentes no fim. */
+  samples: number[];
+}
+
+export function minimapScaleOf(data: MapData | null): MinimapScale | null {
+  const s = data?.minimapScale as Partial<MinimapScale> | undefined;
+  if (typeof s?.radiusPx !== "number" || !Number.isFinite(s.radiusPx)) return null;
+  const samples = Array.isArray(s.samples) ? s.samples.filter((n): n is number => typeof n === "number" && Number.isFinite(n)) : [];
+  return { radiusPx: s.radiusPx, samples };
 }
 
 /** Marcadores manuais válidos do arquivo do mapa. */

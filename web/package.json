@@ -19,6 +19,7 @@
     "@types/node": "^26.6.6",
     "@types/pngjs": "^6.0.5",
     "pngjs": "^7.0.0",
+    "sharp": "^0.35.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.1.0"

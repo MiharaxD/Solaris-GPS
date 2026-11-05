@@ -761,3 +761,21 @@ body.lab {
 .lab-info {
   color: var(--muted);
 }
+
+.fx-panel h3 {
+  margin: 14px 0 4px;
+  font-size: 13px;
+}
+
+.fx-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.fx-plot[hidden] {
+  display: none;
+}

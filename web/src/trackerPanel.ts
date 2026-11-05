@@ -29,7 +29,7 @@ interface SavedRegion extends MinimapRegion {
 
 const prefKey = (w: number, h: number) => `minimap.${w}x${h}`;
 
-function loadRegion(w: number, h: number): SavedRegion | null {
+export function loadRegion(w: number, h: number): SavedRegion | null {
   try {
     const v = JSON.parse(loadPref(prefKey(w, h)) ?? "null") as Partial<SavedRegion> | null;
     if (v && [v.cx, v.cy, v.r].every((n) => typeof n === "number" && Number.isFinite(n)) && (v.shape === "circle" || v.shape === "square")) {
