@@ -97,8 +97,10 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   do Nexus por Hough, pilha do teleporte) e `references.ts` (`refPoints`: WutheringData pela
   afim + manuais − `ignoredRefs`; `locateByRefs`: constelação ou anterior). O Worker roda quando
   `locate.refs` vem; o painel Tracker monta as refs em `setMap` e só exibe o resultado.
+- **Heading (ticket 22):** `web/src/tracker/heading.ts` (`arrowHeading`: eixo de simetria da
+  silhueta da seta, ponta pelo lado mais longo). Roda no Worker em todo frame com recorte.
 - **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`, `scale.test.ts` e
-  `locate.test.ts`, `globalSearch.test.ts` e `references.test.ts`, com as imagens de
+  `locate.test.ts`, `globalSearch.test.ts`, `references.test.ts` e `heading.test.ts`, com as imagens de
   `synthetic.ts`) e
   `npm --prefix web run fixtures` (runner sobre `tracker/fixtures/` e `tracker/samples/`;
   config em `web/vitest.fixtures.config.ts`; `SOLARIS_DUMP=<pasta>` grava os recortes; mede a

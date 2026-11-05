@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 feitos; 21 em parte.
+**Fase:** Fase 2 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–20 feitos; 21 e 22 em parte.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -58,6 +58,9 @@
   no 204400 a 1080p, ícone quase todo coberto); posição a 1–9 px da camada imagem (17 px no
   204400 a 1440p). ~8 ms/frame. Com 1 ícone precisa da posição anterior; a constelação (2+)
   só foi testada com dados sintéticos. O painel só exibe o resultado; a fusão é o ticket 23.
+- Heading (ticket 22, em parte): direção pela simetria da seta, 1–9 ms. Sem direção anotada
+  nos prints; parado o cone aponta pra frente, e seta e cone ficam a ≤ 9,5° onde o cone foi bem
+  detectado. O painel mostra a direção na linha de tempos da prévia.
 - Os prints foram anotados em cima de teleportes/Nexus. Em 204534, 204619 e 204748 a anotação
   ficou 15–34 px fora do teleporte, e o casamento aponta pro teleporte: o erro "contra a
   anotação" do runner inclui esse ruído.
@@ -106,6 +109,7 @@
   2+ ícones), andando um pouco depois do teleporte. Os 9 fixtures do Overworld foram tirados em
   cima do teleporte (ícone embaixo da seta): só cobrem o caso especial. Pedido em 2026-11-04.
   Também ajudam: interiores/cavernas (confirmar que a escala não muda) e outros mapas.
+- Pro ticket 22: anotar a direção da seta (campo "Direção" do painel Fixture) em alguns prints.
 - Os sprites do minimapa (teleporte, Nexus e seta) serão recortados desses prints, não pedidos
   à parte. Escala observada a 1440p: Nexus ~34 px, teleporte ~14×34 px.
 - Teleportes à mão nos 3 mapas sem dados (pelo "+ Novo marcador").
