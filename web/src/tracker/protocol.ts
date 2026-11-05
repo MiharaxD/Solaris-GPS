@@ -40,7 +40,7 @@ export type TrackState = "sem-mapa" | "sem-escala" | "procurando" | "seguindo" |
 
 export interface TrackStatus {
   state: TrackState;
-  /** Última posição aceita (px do zoom máximo); continua valendo quando "perdido". */
+  /** Última posição aceita, suavizada pra exibir (px do zoom máximo); continua valendo quando "perdido". */
   pos: [number, number] | null;
   /** Frames processados por segundo (média móvel). */
   hz: number;
@@ -63,6 +63,8 @@ export interface ResultMessage {
   refFix: RefFix | null;
   /** Posição final (ticket 23): camadas conferidas uma pela outra; null = sem resultado neste frame. */
   fused: Fused | null;
+  /** Posição descartada como salto impossível (ticket 26). */
+  rejected: { px: [number, number]; reason: string } | null;
   heading: Heading | null;
   timings: Record<string, number>;
   track: TrackStatus;

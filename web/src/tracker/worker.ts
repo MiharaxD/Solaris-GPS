@@ -107,7 +107,7 @@ async function process(src: Source): Promise<void> {
       type: "result",
       ...rest,
       crop,
-      track: { state: session.state, pos: session.pos, hz: hzEma, busy: busyEma, dropped },
+      track: { state: session.state, pos: session.display ?? session.pos, hz: hzEma, busy: busyEma, dropped },
     };
     post(msg, crop ? [crop] : []);
   } catch (e) {

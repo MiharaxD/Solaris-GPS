@@ -3,12 +3,13 @@
  * (local em volta da última; global sem posição ou depois de perder) → fusão. Roda no Worker;
  * o leitor de tiles e o relógio vêm de fora pra dar pra testar.
  */
-import { centerCandidates, DEFAULT_FUSE, fuseGlobal, fuseLocal, type Fused } from "./fuse";
+import { centerCandidates, DEFAULT_FUSE, fuseGlobal, fuseLocal, type Confidence, type Fused } from "./fuse";
 import { GlobalLocator } from "./globalSearch";
 import { arrowHeading, type Heading } from "./heading";
 import { detectIcons, type DetectedIcon } from "./icons";
 import { ImageLocator } from "./imageLocator";
 import { DEFAULT_MASK } from "./locate";
+import { DEFAULT_JUMP, JumpGate, MotionFilter, type JumpOptions } from "./motion";
 import type { MinimapRegion, MinimapShape } from "./minimap";
 import { processFrame, type ReadRect } from "./pipeline";
 import type { LocatedResult, MapConfig, ResultMessage, TrackState } from "./protocol";
@@ -28,9 +29,21 @@ export interface SessionOptions {
   searchFirm: number;
   searchLoose: number;
   firmFor: number;
+  /** Saltos (ticket 26): ver `JumpGate`. */
+  jump: JumpOptions;
+  /** Erro esperado da medição por confiança (px), pro filtro. */
+  sigma: Record<Confidence, number>;
 }
 
-export const DEFAULT_SESSION: SessionOptions = { lostAfter: 1500, globalEvery: 2000, searchFirm: 64, searchLoose: 160, firmFor: 300 };
+export const DEFAULT_SESSION: SessionOptions = {
+  lostAfter: 1500,
+  globalEvery: 2000,
+  searchFirm: 64,
+  searchLoose: 160,
+  firmFor: 300,
+  jump: DEFAULT_JUMP,
+  sigma: { alta: 2, média: 4, baixa: 8 },
+};
 
 /** Parte do resultado que a sessão calcula (o Worker põe o recorte e as medições). */
 export type StepResult = Omit<ResultMessage, "type" | "crop" | "track"> & { cropRgba: { width: number; height: number; data: Uint8ClampedArray } | null };
@@ -47,12 +60,20 @@ export class TrackSession {
   private hold = false;
   private lastOk = 0;
   private lastGlobal = -Infinity;
+  /** Próxima posição passa direto (Find me). */
+  private forceAccept = false;
+  private readonly gate: JumpGate;
+  private readonly filter = new MotionFilter();
+  /** Posição suavizada pra exibir. */
+  display: [number, number] | null = null;
 
   constructor(
     private readonly readerFor: (map: MapConfig) => TileReader,
     private readonly now: () => number = () => performance.now(),
     private readonly opt: SessionOptions = DEFAULT_SESSION,
-  ) {}
+  ) {
+    this.gate = new JumpGate(opt.jump);
+  }
 
   setRegion(region: MinimapRegion | null, shape: MinimapShape): void {
     this.region = region;
@@ -66,6 +87,9 @@ export class TrackSession {
   setMap(map: MapConfig | null): void {
     if (map?.info.name !== this.map?.info.name) {
       this.pos = null;
+      this.display = null;
+      this.filter.clear();
+      this.gate.clear();
       this.locator = null;
       this.global = null;
       if (map) {
@@ -90,6 +114,7 @@ export class TrackSession {
     this.hold = false;
     this.wantGlobal = false;
     this.pos = px;
+    this.forceAccept = true;
     this.lastOk = this.now();
   }
 
@@ -118,6 +143,7 @@ export class TrackSession {
       icons: [],
       refFix: null,
       fused: null,
+      rejected: null,
       heading: null,
       timings,
     };
@@ -143,6 +169,7 @@ export class TrackSession {
 
     let fused: Fused | null = null;
     let located: LocatedResult | null = null;
+    let teleport = false;
     t = this.now();
     const lost = this.state === "perdido" || !this.pos;
     if (this.wantGlobal || (lost && t - this.lastGlobal >= this.opt.globalEvery)) {
@@ -155,20 +182,32 @@ export class TrackSession {
       const best = guided ?? G;
       located = best && { ...best, mode: "global" };
       fused = fuseGlobal(G, guided);
+      teleport = !!guided && !!fused && fused.px === guided.px;
       timings.global = this.now() - t;
     } else if (this.pos) {
       const search = t - this.lastOk < this.opt.firmFor ? this.opt.searchFirm : this.opt.searchLoose;
       const L = await this.locator.locate(crop, r, radiusPx, this.pos, search);
       located = L && { ...L, mode: "local", confident: true };
       fused = fuseLocal(L, refFix);
+      // nada casou em volta e há ícone sob a seta: provável teleporte, busca guiada no próximo frame
+      if (!fused && centerCandidates(icons, radiusPx / r, r, map.refs).length) this.wantGlobal = true;
       timings.locate = this.now() - t;
     }
     out.located = located;
-    out.fused = fused;
     if (fused) {
-      this.pos = fused.px;
-      this.lastOk = this.now();
+      const now = this.now();
+      const verdict = this.gate.check(fused.px, this.pos, now - this.lastOk, teleport || this.forceAccept, located?.mode === "global");
+      this.forceAccept = false;
+      if (verdict === "reject") {
+        out.rejected = { px: fused.px, reason: "salto impossível" };
+        fused = null;
+      } else {
+        this.pos = fused.px;
+        this.lastOk = now;
+        this.display = verdict === "reset" ? (this.filter.reset(fused.px, now), fused.px) : this.filter.update(fused.px, now, this.opt.sigma[fused.confidence]);
+      }
     }
+    out.fused = fused;
     return out;
   }
 }

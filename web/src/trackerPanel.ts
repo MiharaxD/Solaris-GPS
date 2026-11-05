@@ -370,7 +370,7 @@ export class TrackerPanel {
     }
     if (f) {
       const look: PlayerLook = f.confidence;
-      this.playerView.show(f.px, this.lastDeg, look);
+      this.playerView.show(t.pos ?? f.px, this.lastDeg, look);
       const ncc = msg.located ? ` · NCC ${msg.located.score.toFixed(2)}` : "";
       const icons = msg.icons.length ? ` · ícones: ${msg.icons.map((i) => (i.kind === "nexus" ? "Nexus" : "teleporte")).join(", ")}` : "";
       this.posInfo.textContent =
@@ -381,6 +381,11 @@ export class TrackerPanel {
       // incerto: mostra o palpite, mas não segue
       this.playerView.show(msg.located.px, this.lastDeg, "palpite");
       this.posInfo.textContent = `Não tenho certeza (NCC ${msg.located.score.toFixed(2)}, margem ${msg.located.margin.toFixed(2)}); o palpite está no mapa. Use o Find me.`;
+      return;
+    }
+    if (msg.rejected && t.pos) {
+      this.playerView.show(t.pos, this.lastDeg, "baixa");
+      this.posInfo.textContent = `Descartei um ${msg.rejected.reason} (px ${Math.round(msg.rejected.px[0])}, ${Math.round(msg.rejected.px[1])}); mantendo a posição.`;
       return;
     }
     if (t.state === "perdido" && t.pos) {
