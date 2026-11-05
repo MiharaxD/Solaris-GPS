@@ -726,6 +726,35 @@ body {
   font-size: 11px;
 }
 
+.trk-hud {
+  max-width: 180px;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trk-hud[data-state="perdido"],
+.trk-hud[data-state="procurando"] {
+  color: #ff9f43;
+}
+
+.trk-follow {
+  width: 100%;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--panel-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.trk-follow[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ---- Laboratório (lab.html) ---- */
 body.lab {
   height: auto;
@@ -780,15 +809,48 @@ body.lab {
   display: none;
 }
 
-/* Posição do tracker: sólida = seguindo; tracejada = palpite incerto ou Find me procurando. */
-.trk-pos {
-  stroke: #fff;
-  stroke-width: 2;
-  fill: var(--accent);
-  fill-opacity: 0.95;
+/* Jogador no mapa: seta girada pela direção; cor = confiança (verde alta, amarelo média,
+   laranja baixa), cinza = rastreio perdido, translúcida = palpite. */
+.trk-player {
+  background: none;
+  border: 0;
 }
 
-.trk-pos.guess {
-  stroke-dasharray: 4 3;
-  fill-opacity: 0.35;
+.trk-arrow {
+  width: 32px;
+  height: 32px;
+  transition: transform 0.15s linear;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
 }
+
+.trk-arrow svg {
+  display: block;
+}
+
+.trk-arrow path {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.trk-arrow[data-look="alta"] path {
+  fill: #5fd38a;
+}
+
+.trk-arrow[data-look="baixa"] path {
+  fill: #ff9f43;
+}
+
+.trk-arrow[data-look="perdido"] path {
+  fill: #8a99a4;
+}
+
+.trk-arrow[data-look="palpite"] {
+  opacity: 0.5;
+}
+
+.trk-arrow[data-look="palpite"] path {
+  stroke-dasharray: 4 3;
+}
+

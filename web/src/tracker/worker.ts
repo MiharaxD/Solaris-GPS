@@ -1,108 +1,160 @@
 /// <reference lib="webworker" />
 /**
- * Web Worker do tracker: recebe frames (ImageBitmap) da tela compartilhada e roda o pipeline
- * fora da thread da página. Só lê os retângulos de que precisa (canto da busca, recorte).
+ * Web Worker do tracker (ticket 25). Lê os frames da tela compartilhada direto do
+ * MediaStreamTrackProcessor (segue rodando com a aba em segundo plano, onde timers e o <video>
+ * da página são freados) ou, sem ele, recebe um bitmap por vez da página. Fica só com o frame
+ * mais recente, processa na frequência alvo e mede Hz e ocupação (o custo de CPU do rastreio).
  */
-import { GlobalLocator } from "./globalSearch";
-import { ImageLocator } from "./imageLocator";
-import { centerCandidates, DEFAULT_FUSE, fuseGlobal, fuseLocal, type Fused } from "./fuse";
-import { arrowHeading, type Heading } from "./heading";
-import { detectIcons, type DetectedIcon } from "./icons";
-import { DEFAULT_MASK } from "./locate";
-import { locateByRefs, type RefFix } from "./references";
-import { processFrame } from "./pipeline";
-import type { FromWorker, LocatedResult, ToWorker } from "./protocol";
-import { browserTileReader, lruTileReader } from "./tiles";
+import { TrackSession } from "./session";
+import type { FromWorker, ResultMessage, ToWorker } from "./protocol";
+import { browserTileReader } from "./tiles";
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 const canvas = new OffscreenCanvas(1, 1);
 const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-/** Uma por mapa: guarda a janela e o cache de tiles entre frames. */
-let locator: ImageLocator | null = null;
-let global: GlobalLocator | null = null;
+const session = new TrackSession((m) => browserTileReader(m.info));
 
-scope.onmessage = async (ev: MessageEvent<ToWorker>) => {
-  const msg = ev.data;
-  if (msg.type !== "frame") return;
-  const { bitmap } = msg;
+/** Frame a processar: VideoFrame (stream) ou ImageBitmap (página). */
+interface Source {
+  image: CanvasImageSource;
+  width: number;
+  height: number;
+  close(): void;
+}
+
+let interval = 100;
+let latest: Source | null = null;
+let busy = false;
+let timer = 0;
+let lastStart = -Infinity;
+let lastMs = 0;
+let lastPreview = -Infinity;
+let hzEma = 0;
+let busyEma = 0;
+let dropped = 0;
+let wantGrab = false;
+const PREVIEW_EVERY = 250;
+
+const post = (msg: FromWorker, transfer: Transferable[] = []) => scope.postMessage(msg, transfer);
+const ema = (prev: number, v: number, a = 0.2) => (prev === 0 ? v : prev + a * (v - prev));
+
+function fromVideoFrame(f: VideoFrame): Source {
+  return { image: f, width: f.displayWidth, height: f.displayHeight, close: () => f.close() };
+}
+
+function fromBitmap(b: ImageBitmap): Source {
+  return { image: b, width: b.width, height: b.height, close: () => b.close() };
+}
+
+function offer(src: Source): void {
+  if (latest) {
+    latest.close();
+    dropped++;
+  }
+  latest = src;
+  schedule();
+}
+
+function schedule(): void {
+  if (busy || !latest) return;
+  const wait = lastStart + interval - performance.now();
+  if (wait > 1) {
+    scope.clearTimeout(timer);
+    timer = scope.setTimeout(schedule, wait);
+    return;
+  }
+  const src = latest;
+  latest = null;
+  void process(src);
+}
+
+async function process(src: Source): Promise<void> {
+  busy = true;
+  const t0 = performance.now();
+  if (Number.isFinite(lastStart)) {
+    const dt = t0 - lastStart;
+    hzEma = ema(hzEma, 1000 / dt);
+    busyEma = ema(busyEma, Math.min(1, lastMs / dt));
+  }
+  lastStart = t0;
   try {
-    const t0 = performance.now();
     const read = (x: number, y: number, w: number, h: number) => {
       canvas.width = Math.max(1, w);
       canvas.height = Math.max(1, h);
       ctx.clearRect(0, 0, w, h);
-      ctx.drawImage(bitmap, x, y, w, h, 0, 0, w, h);
+      ctx.drawImage(src.image, x, y, w, h, 0, 0, w, h);
       const img = ctx.getImageData(0, 0, Math.max(1, w), Math.max(1, h));
       return { width: img.width, height: img.height, data: img.data };
     };
-    const res = processFrame(read, bitmap.width, bitmap.height, { region: msg.region, detect: msg.detect, shape: msg.shape });
-    let heading: Heading | null = null;
-    if (res.crop && res.region && res.crop.width > 0) {
-      const t1 = performance.now();
-      heading = arrowHeading(res.crop, res.region.r);
-      res.timings.heading = performance.now() - t1;
-    }
-    let located: LocatedResult | null = null;
-    let icons: DetectedIcon[] = [];
-    let refFix: RefFix | null = null;
-    let fused: Fused | null = null;
-    const req = msg.locate;
-    if (req?.refs && res.crop && res.region && res.crop.width > 0) {
-      const t1 = performance.now();
-      icons = detectIcons(res.crop, res.region.r);
-      refFix = locateByRefs(icons, req.radiusPx / res.region.r, req.refs, req.prev ?? null);
-      res.timings.refs = performance.now() - t1;
-    }
-    if (req && res.crop && res.region && res.crop.width > 0) {
-      if (locator?.info.name !== req.info.name) {
-        const read = browserTileReader(req.info);
-        locator = new ImageLocator(req.info, read);
-        global = new GlobalLocator(req.info, lruTileReader(read, 64), locator, DEFAULT_MASK);
-      }
-      const t1 = performance.now();
-      const r = res.region.r;
-      if (req.prev) {
-        const L = await locator.locate(res.crop, r, req.radiusPx, req.prev, req.search);
-        located = L && { ...L, mode: "local", confident: true };
-        fused = fuseLocal(L, refFix);
-        res.timings.locate = performance.now() - t1;
-      } else {
-        // ícone no centro (logo após o TP): só os teleportes do tipo; senão (ou se falhar), o mapa inteiro
-        const cands = req.refs ? centerCandidates(icons, req.radiusPx / r, r, req.refs) : [];
-        const guided = cands.length ? await global!.locate(res.crop, r, req.radiusPx, cands) : null;
-        const G = !guided || guided.score < DEFAULT_FUSE.minGuided ? await global!.locate(res.crop, r, req.radiusPx) : null;
-        const best = guided ?? G;
-        located = best && { ...best, mode: "global" };
-        fused = fuseGlobal(G, guided);
-        res.timings.global = performance.now() - t1;
-      }
+    const step = await session.step(read, src.width, src.height);
+    if (wantGrab) {
+      wantGrab = false;
+      const full = new OffscreenCanvas(src.width, src.height);
+      full.getContext("2d")!.drawImage(src.image, 0, 0);
+      post({ type: "grab", blob: await full.convertToBlob({ type: "image/png" }) });
     }
     let crop: ImageBitmap | null = null;
-    if (res.crop && res.crop.width > 0) {
-      const t1 = performance.now();
-      crop = await createImageBitmap(new ImageData(new Uint8ClampedArray(res.crop.data), res.crop.width, res.crop.height));
-      res.timings.encode = performance.now() - t1;
+    const c = step.cropRgba;
+    if (c && c.width > 0 && t0 - lastPreview >= PREVIEW_EVERY) {
+      lastPreview = t0;
+      crop = await createImageBitmap(new ImageData(new Uint8ClampedArray(c.data), c.width, c.height));
     }
-    res.timings.total = performance.now() - t0;
-    const out: FromWorker = {
+    lastMs = performance.now() - t0;
+    step.timings.total = lastMs;
+    const { cropRgba: _drop, ...rest } = step;
+    void _drop;
+    const msg: ResultMessage = {
       type: "result",
-      seq: msg.seq,
-      frameW: bitmap.width,
-      frameH: bitmap.height,
-      region: res.region,
-      detection: res.detection,
+      ...rest,
       crop,
-      located,
-      icons,
-      refFix,
-      fused,
-      heading,
-      timings: res.timings,
+      track: { state: session.state, pos: session.pos, hz: hzEma, busy: busyEma, dropped },
     };
-    scope.postMessage(out, crop ? [crop] : []);
+    post(msg, crop ? [crop] : []);
   } catch (e) {
-    scope.postMessage({ type: "error", seq: msg.seq, message: e instanceof Error ? e.message : String(e) } satisfies FromWorker);
+    lastMs = performance.now() - t0;
+    post({ type: "error", message: e instanceof Error ? e.message : String(e) });
   } finally {
-    bitmap.close();
+    src.close();
+    busy = false;
+    schedule();
+  }
+}
+
+async function readStream(readable: ReadableStream<VideoFrame>): Promise<void> {
+  const reader = readable.getReader();
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done || !value) break;
+    offer(fromVideoFrame(value));
+  }
+}
+
+scope.onmessage = (ev: MessageEvent<ToWorker>) => {
+  const msg = ev.data;
+  switch (msg.type) {
+    case "stream":
+      void readStream(msg.readable).catch((e: unknown) => post({ type: "error", message: `stream: ${String(e)}` }));
+      break;
+    case "frame":
+      offer(fromBitmap(msg.bitmap));
+      break;
+    case "config":
+      session.setRegion(msg.region, msg.shape);
+      interval = 1000 / Math.max(1, msg.hz);
+      break;
+    case "detect":
+      session.detect();
+      break;
+    case "map":
+      session.setMap(msg.map);
+      break;
+    case "find":
+      if (msg.mode === "global") session.findGlobal();
+      else if (msg.mode === "hold") session.holdForClick();
+      else if (msg.mode === "here") session.findHere(msg.px);
+      break;
+    case "grab":
+      wantGrab = true;
+      break;
   }
 };

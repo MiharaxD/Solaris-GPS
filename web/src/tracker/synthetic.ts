@@ -1,5 +1,7 @@
 /** Imagens sintéticas pros testes do tracker (mapa de manchas e recorte do minimapa). */
 import type { Gray, Rgba } from "./image";
+import { resizeGray } from "./match";
+import type { TileReader } from "./tiles";
 
 /** "Mapa" sintético: soma de manchas gaussianas determinísticas. */
 /** `amp` escala o contraste das manchas (1 = forte; o minimapa real fica perto de 0,3). */
@@ -42,4 +44,27 @@ export function fakeCrop(map: Gray, p: [number, number], r: number, R: number): 
     }
   }
   return { width: size, height: size, data };
+}
+
+/** Pirâmide em memória (como a do build_tiles): o zoom máximo e os menores por redução. */
+export function pyramid(map: Gray, maxZoom: number, minZoom: number, ts: number): TileReader {
+  const levels = new Map<number, Gray>();
+  for (let z = maxZoom; z >= minZoom; z--) {
+    const k = Math.pow(2, maxZoom - z);
+    levels.set(z, k === 1 ? map : resizeGray(map, map.width / k, map.height / k));
+  }
+  return async (z, row, col) => {
+    const g = levels.get(z);
+    if (!g || row < 0 || col < 0 || (row + 1) * ts > g.height || (col + 1) * ts > g.width) return null;
+    const data = new Uint8ClampedArray(ts * ts * 4);
+    for (let y = 0; y < ts; y++) {
+      for (let x = 0; x < ts; x++) {
+        const v = g.data[(row * ts + y) * g.width + col * ts + x]!;
+        const i = (y * ts + x) * 4;
+        data[i] = data[i + 1] = data[i + 2] = v;
+        data[i + 3] = 255;
+      }
+    }
+    return { width: ts, height: ts, data } satisfies Rgba;
+  };
 }
