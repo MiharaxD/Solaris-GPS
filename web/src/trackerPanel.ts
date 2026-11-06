@@ -357,6 +357,7 @@ export class TrackerPanel {
     }
     if (this.hidden) this.hidden.results++;
     if (msg.heading) this.lastDeg = msg.heading.deg;
+    if (msg.track.state !== "pausado") this.playerView.setCamera(msg.camera);
     this.showPosition(msg);
     this.drawPreview(msg);
   }
@@ -424,7 +425,7 @@ export class TrackerPanel {
     this.hud.textContent = `${t.state}${layer} · ${t.hz.toFixed(1)} Hz · Worker ${Math.round(t.busy * 100)}%`;
     this.hud.dataset.state = t.state;
     const ms = Object.entries(msg.timings).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(" · ");
-    this.stats.textContent = `${msg.frameW}×${msg.frameH}${msg.heading ? ` · direção ${Math.round(msg.heading.deg)}°` : ""} · ms: ${ms}`;
+    this.stats.textContent = `${msg.frameW}×${msg.frameH}${msg.heading ? ` · direção ${Math.round(msg.heading.deg)}°` : ""}${msg.camera ? ` · câmera ${Math.round(msg.camera.deg)}°` : ""} · ms: ${ms}`;
   }
 
   /** Mede quantos resultados chegam com a aba em segundo plano e mostra ao voltar. */

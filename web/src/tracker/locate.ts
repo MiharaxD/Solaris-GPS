@@ -119,6 +119,22 @@ export function detectCone(crop: Rgba, minStep = 12): { a0: number; a1: number; 
   return { a0, a1: a0 + (best.w / BINS) * 2 * Math.PI, contrast: best.v };
 }
 
+/** Pra onde a câmera olha: o meio do cone de visão. */
+export interface CameraView {
+  /** 0 = norte, sentido horário, em graus. */
+  deg: number;
+  /** Abertura do cone em graus. */
+  width: number;
+}
+
+/** Direção da câmera pelo cone de visão; null se o cone não aparece (ou está fraco demais). */
+export function cameraView(crop: Rgba): CameraView | null {
+  const cone = detectCone(crop);
+  if (!cone) return null;
+  const mid = ((cone.a0 + cone.a1) / 2) * (180 / Math.PI) + 90; // atan2 (0 = leste, y pra baixo) → norte horário
+  return { deg: ((mid % 360) + 360) % 360, width: (cone.a1 - cone.a0) * (180 / Math.PI) };
+}
+
 /** Canais + máscara do recorte (resolução da tela). */
 export function minimapPlanes(crop: Rgba, opt: MinimapMaskOptions): Planes {
   const n = crop.width * crop.height;

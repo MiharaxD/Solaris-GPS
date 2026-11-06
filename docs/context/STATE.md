@@ -60,9 +60,16 @@
   Tipo certo em 35 de 36 casos (falha no 204400 a 1080p, ícone quase todo coberto); seguindo,
   a posição sai a 2–29 px da anotação (ruído da anotação incluso). O print com 2 teleportes sai
   por constelação (3–6 px). ~8 ms/frame. Com 1 ícone precisa da posição anterior.
-- Heading (ticket 22, em parte): direção pela simetria da seta, 1–9 ms. Sem direção anotada
-  nos prints; parado o cone aponta pra frente, e seta e cone ficam a ≤ 9,5° onde o cone foi bem
-  detectado. O painel mostra a direção na linha de tempos da prévia.
+- Heading (ticket 22, em parte): direção pela simetria da seta (contorno amarelo saturado + a
+  face clara que ele cerca), 1–9 ms. Sem direção anotada nos prints; parado o cone aponta pra
+  frente, e seta e cone ficam a ≤ 9,5° onde o cone foi bem detectado. O filtro antigo
+  ("amarelo ou claro") pegava areia e chão clareado pelo cone: no jogo, girando a câmera em
+  Jinzhou, a seta do site girava junto (até 180° de erro). Com cone simulado sob a seta em 18
+  direções e 3 intensidades, nos 20 prints, o novo não erra; o antigo errava 100 casos.
+- Câmera: `cameraView` (meio do cone de visão) vai no resultado do Worker; o site desenha o cone
+  atrás da seta (some depois de 1 s sem cone) e a prévia mostra "câmera N°".
+- Primeira demo com o jogo (Overworld, 1440p, gravação do usuário): posição certa parado e
+  andando, ~10 Hz, Worker ~45–50%.
 - Fusão (ticket 23): o painel segue a posição fundida (camada, confiança e o que foi
   descartado aparecem no status). Nos 36 casos: seguindo, imagem e ícones concordam em 35 (no
   outro só há imagem); sem posição anterior, acerta 35 (~100–210 ms). A busca guiada usa os
@@ -152,7 +159,8 @@
   caem em lugares errados (a global com "sim").
 - O cone de visão (claro, ~60°, gira com a câmera) é detectado pelos degraus de brilho nas
   bordas mais o contraste do setor. Acerta 8 dos 9 prints; no 204214 (cone sutil sobre chão
-  amarelo) pega os prédios brancos, e o casamento acerta mesmo assim. Sem a máscara, o 204708
+  amarelo) pega os prédios brancos, e o casamento acerta mesmo assim; o cone desenhado no site
+  pode sair torto nesses lugares. Sem a máscara, o 204708
   erra. O raio detectado oscila 123–126 px a 1440p; o rastreio precisa da região salva.
 - Hz, CPU e segundo plano só foram medidos com fonte simulada; com o jogo real, na demo do 🛑 29.
 - A barreira de saltos não pega um casamento errado dentro do alcance (até ~55 px por frame

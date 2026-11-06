@@ -8,7 +8,7 @@ import { GlobalLocator } from "./globalSearch";
 import { arrowHeading, type Heading } from "./heading";
 import { detectIcons, type DetectedIcon } from "./icons";
 import { ImageLocator } from "./imageLocator";
-import { DEFAULT_MASK } from "./locate";
+import { cameraView, DEFAULT_MASK } from "./locate";
 import { DEFAULT_JUMP, JumpGate, MotionFilter, type JumpOptions } from "./motion";
 import { detectMinimap, searchCorner, type MinimapRegion, type MinimapShape } from "./minimap";
 import { DEFAULT_PRESENCE, minimapPresence, PresenceGate, type PresenceOptions } from "./presence";
@@ -166,6 +166,7 @@ export class TrackSession {
       fused: null,
       rejected: null,
       heading: null,
+      camera: null,
       presence: null,
       timings,
     };
@@ -178,6 +179,9 @@ export class TrackSession {
     const heading: Heading | null = arrowHeading(crop, r);
     timings.heading = this.now() - t;
     out.heading = heading;
+    t = this.now();
+    out.camera = cameraView(crop);
+    timings.camera = this.now() - t;
 
     const map = this.map;
     if (!map?.radiusPx || !this.locator || !this.global || this.hold) return out;

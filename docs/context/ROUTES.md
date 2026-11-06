@@ -112,6 +112,8 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   voltar, desconta o tempo pausado dos relógios. Estado `pausado` + `pausedFor` no `track`.
 - **Heading (ticket 22):** `web/src/tracker/heading.ts` (`arrowHeading`: eixo de simetria da
   silhueta da seta, ponta pelo lado mais longo). Roda no Worker em todo frame com recorte.
+- **Câmera:** `cameraView` em `locate.ts` (meio do `detectCone`) → `camera` no resultado; o cone
+  no mapa é o `setCamera` do `trackerView.ts` (estilo `.trk-cone`).
 - **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`, `scale.test.ts` e
   `locate.test.ts`, `globalSearch.test.ts`, `references.test.ts`, `heading.test.ts`, `fuse.test.ts`, `motion.test.ts`, `presence.test.ts` e `session.test.ts`, com as imagens de
   `synthetic.ts`) e

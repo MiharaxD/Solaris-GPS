@@ -6,6 +6,7 @@
 import type { MapInfo } from "../maps";
 import type { Fused } from "./fuse";
 import type { Heading } from "./heading";
+import type { CameraView } from "./locate";
 import type { DetectedIcon } from "./icons";
 import type { Located } from "./locate";
 import type { Detection, MinimapRegion, MinimapShape } from "./minimap";
@@ -68,6 +69,8 @@ export interface ResultMessage {
   /** Posição descartada como salto impossível (ticket 26). */
   rejected: { px: [number, number]; reason: string } | null;
   heading: Heading | null;
+  /** Pra onde a câmera olha (cone de visão do minimapa); null = cone não achado. */
+  camera: CameraView | null;
   /** Anel do minimapa na região (ticket 27); null = não medido (sem região ou minimapa quadrado). */
   presence: { score: number; visible: boolean } | null;
   timings: Record<string, number>;

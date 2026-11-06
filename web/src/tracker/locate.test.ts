@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Rgba } from "./image";
-import { DEFAULT_MASK, detectCone, locateByImage, makeMapWindow, minimapPlanes, planesFromGray } from "./locate";
+import { cameraView, DEFAULT_MASK, detectCone, locateByImage, makeMapWindow, minimapPlanes, planesFromGray } from "./locate";
 import { fakeCrop, fakeMap } from "./synthetic";
 
 /** Clareia um setor (como o cone de visão do jogo) entre os ângulos a0 e a1 (graus, atan2). */
@@ -29,6 +29,20 @@ describe("detectCone", () => {
 
   it("sem cone, não inventa", () => {
     expect(detectCone(fakeCrop(fakeMap(600, 0.15), [300, 300], 120, 100))).toBeNull();
+  });
+});
+
+describe("cameraView", () => {
+  it("meio do cone em graus a partir do norte, horário", () => {
+    // atan2 -100..-40 = meio em -70 (y pra baixo) = 20° a partir do norte; 150..210 = oeste
+    for (const [a0, a1, want] of [[-100, -40, 20], [30, 90, 150]] as const) {
+      const crop = fakeCrop(fakeMap(600, 0.3), [300, 300], 120, 100);
+      addCone(crop, a0, a1, 40);
+      const cam = cameraView(crop)!;
+      expect(cam).not.toBeNull();
+      expect(Math.abs(cam.deg - want)).toBeLessThanOrEqual(8);
+      expect(Math.abs(cam.width - 60)).toBeLessThanOrEqual(16);
+    }
   });
 });
 

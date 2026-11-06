@@ -820,7 +820,35 @@ body.lab {
   border: 0;
 }
 
+.trk-player-box {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+/* cone de visão da câmera, atrás da seta (140 px, centro no do jogador) */
+.trk-cone {
+  position: absolute;
+  left: -54px;
+  top: -54px;
+  width: 140px;
+  height: 140px;
+  pointer-events: none;
+  transition: transform 0.15s linear;
+}
+
+.trk-cone svg {
+  display: block;
+}
+
+.trk-cone[data-look="perdido"],
+.trk-cone[data-look="pausado"],
+.trk-cone[data-look="palpite"] {
+  opacity: 0.4;
+}
+
 .trk-arrow {
+  position: relative;
   width: 32px;
   height: 32px;
   transition: transform 0.15s linear;
