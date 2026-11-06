@@ -2,9 +2,9 @@
 """Tampa o rombo do Overworld entre Jinzhou e Mengzhou (só mexe no disco, nunca acessa a rede).
 
 O mapa original tem um retângulo de fundo azul entre as duas regiões, com cortes retos nas
-bordas. O script preenche o vão com uma ponte de terra: as cores vêm de uma extrapolação suave
-(convolução normalizada) das bordas conhecidas, e a máscara da ponte é suavizada pra parecer
-costa. Os pixels originais nunca mudam; só o fundo azul dentro da área é substituído.
+bordas. O script preenche o vão com terra de verdade: espelha o terreno de cada lado do corte
+(a borda continua sem emenda, com o mesmo detalhe e a mesma costa) e mistura os espelhos por
+distância. Os pixels originais nunca mudam, só o fundo azul e o serrilhado dos cortes.
 
     .venv/Scripts/python tools/fill_overworld_gap.py [--preview PNG] [--write]
 
@@ -29,9 +29,17 @@ TILE = 512
 Z = 6
 ROWS = range(24, 38)  # z6, linhas [24, 38)
 COLS = range(16, 26)  # z6, colunas [16, 26)
-F = 4                 # o desenho da ponte é feito a 1/4 da resolução do z6
 BG = np.array([5, 39, 52], dtype=np.float32)
 BG_DIFF = 10.0        # distância mínima do fundo pra contar como terra (ou costa esmaecida)
+
+F = 4                 # a base suave é calculada a 1/4 da resolução do z6
+SHIFT_L = 1400        # deslocamento da fonte de detalhe do lado esquerdo
+SHIFT_R = 1100        # idem, lado direito
+DETAIL_SIGMA = 9.0
+DETAIL_CLIP = 40.0
+DETAIL_FADE = 260.0
+DETAIL_GAIN = 1.2
+
 
 # Polígono da ponte em pixels a 1/4 de escala, origem no canto da região (linha 24, coluna 16).
 BRIDGE = [
@@ -89,7 +97,7 @@ def load_region(root: Path) -> np.ndarray:
     return big
 
 
-def compose(big: np.ndarray) -> np.ndarray:
+def base_fill(big: np.ndarray) -> np.ndarray:
     h, w = big.shape[:2]
     known = np.linalg.norm(big.astype(np.float32) - BG, axis=-1) > BG_DIFF
     # os 2–3 px da borda dos cortes retos são escuros (serrilhado): contam como desconhecidos
@@ -114,6 +122,62 @@ def compose(big: np.ndarray) -> np.ndarray:
     mix = (~solid) & (alpha[..., 0] > 0.004)
     out[mix] = (BG * (1 - alpha) + fill * alpha)[mix]
     return np.clip(out + 0.5, 0, 255).astype(np.uint8)
+
+
+def edges(known: np.ndarray) -> dict[str, int]:
+    """Acha os cortes retos: última coluna do lado esquerdo, primeira do direito e do 'degrau'."""
+    def frac_cols(rows: slice, cols: slice) -> np.ndarray:
+        return known[rows, cols].mean(axis=0) > 0.5
+
+    left = np.nonzero(frac_cols(slice(1700, 3200), slice(0, 2500)))[0]
+    right = np.nonzero(frac_cols(slice(2400, 4000), slice(2000, 4800)))[0]
+    notch_x = np.nonzero(frac_cols(slice(500, 1300), slice(3000, 5120)))[0]
+    top = np.nonzero(known[0:2400, 3100:3800].mean(axis=1) > 0.5)[0]
+    return {"xl": int(left.max()), "xr": int(right.min()) + 2000,
+            "xn": int(notch_x.min()) + 3000, "yt": int(top.min())}
+
+
+def compose(big: np.ndarray) -> np.ndarray:
+    """Base suave (cor e costa) + detalhe real do próprio mapa, sem espelhar."""
+    base = base_fill(big)
+    h, w = big.shape[:2]
+    known = np.linalg.norm(big.astype(np.float32) - BG, axis=-1) > BG_DIFF
+    e = edges(known)
+    xl, xr, xn, yt = e["xl"], e["xr"], e["xn"], e["yt"]
+    print("cortes:", e)
+
+    y1 = 5300
+    xs0, xs1 = xl - 5, xn + 5
+    ys, xs = np.mgrid[0:y1, xs0:xs1]
+    # fonte do detalhe: terra do lado esquerdo (metade esquerda do vão) ou do direito, deslocada sem espelhar
+    mid = (xl + xr) // 2
+    left_src = np.clip(xs - SHIFT_L, 0, w - 1)
+    right_src = np.clip(xs + SHIFT_R, 0, w - 1)
+    pick = np.clip((xs - mid) / 300.0 + 0.5, 0, 1)[..., None]  # 0 = esquerda, 1 = direita
+
+    rowi = np.arange(y1)[:, None]
+    src_l = big[:y1][rowi, left_src].astype(np.float32)
+    src_r = big[:y1][rowi, right_src].astype(np.float32)
+    src = src_l * (1 - pick) + src_r * pick
+    # alta frequência (contornos, rochas); a baixa fica com a base suave
+    hp = src - gauss(src, DETAIL_SIGMA)
+    hp = np.clip(hp, -DETAIL_CLIP, DETAIL_CLIP)
+    # sem detalhe perto de costa ou de corte reto da própria fonte (viraria uma linha)
+    kn = known[:y1].astype(np.float32)
+    kn_src = kn[rowi, left_src] * (1 - pick[..., 0]) + kn[rowi, right_src] * pick[..., 0]
+    hp *= (gauss(kn_src, DETAIL_SIGMA * 1.5) > 0.985)[..., None]
+
+    # dist. ao corte mais próximo: o detalhe entra aos poucos pra não ter emenda
+    d = np.minimum(xs - xl, np.where(xs < xr, xr - xs, np.where(ys < yt, np.minimum(yt - ys, xn - xs), 1e9)))
+    fade = np.clip(d / DETAIL_FADE, 0, 1)[..., None]
+    fade = fade * fade * (3 - 2 * fade)
+    a = base[:y1, xs0:xs1].astype(np.float32) + hp * fade * DETAIL_GAIN
+
+    out = base.copy()
+    blk = out[:y1, xs0:xs1]
+    changed = np.any(base[:y1, xs0:xs1] != big[:y1, xs0:xs1], axis=-1)  # só onde a base mexeu
+    blk[changed] = np.clip(a[changed] + 0.5, 0, 255).astype(np.uint8)
+    return out
 
 
 def main() -> int:
