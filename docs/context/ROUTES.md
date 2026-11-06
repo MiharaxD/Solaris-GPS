@@ -46,6 +46,12 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   pixel↔latlng no `maxZoom`), `web/src/maps.ts` (tipos e leitura do `maps.json`),
   `web/src/main.ts` (bootstrap, troca de mapa, HUD), `web/src/mapPicker.ts` (dropdown),
   `web/src/storage.ts` (prefs no localStorage) e `web/src/style.css` (tokens em `:root`).
+- **Visual:** `web/src/style.css` segue o dossiê visual do usuário (claude.ai/artifact/6txRqHdy2ApX8DE28xPzip):
+  tokens no `:root`, superfície comum (painel translúcido, linha fina, canto cortado) num seletor
+  só no topo, rótulos em Chakra Petch e UI em Inter (`@fontsource`, importadas no `main.ts`).
+  Ícones em `web/src/icons.ts`: `markerSvg` (selo escuro + anel na cor + glifo claro; teleporte e
+  Nexus copiam a silhueta do minimapa), `markerSprite` (bitmap 64 px pro canvas) e `uiIcon`
+  (glifos de traço da barra e dos cabeçalhos). Categoria → ícone e cor em `markers.ts`.
 - **Rodar e validar:** `npm --prefix web run dev` (http://127.0.0.1:5173, ou `preview_start
   web` pelo `.claude/launch.json`), `npm --prefix web run typecheck` (tsconfig.json pro
   browser e tsconfig.node.json pro vite.config e `web/server/`) e `npm --prefix web test`.
@@ -57,7 +63,7 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `web/src/autoCalib.ts` (máscara de terra + busca das 8 orientações), `web/src/affine.ts`
   (afim/similaridade normalizadas, inversa, `anchorAt`; testes em `affine.test.ts`) e
   `web/src/refs.ts` (lê `/refs/<name>.json`).
-- **Marcadores (ticket 11):** `web/src/markers.ts` (categorias, cores, filtro, busca;
+- **Marcadores (ticket 11):** `web/src/markers.ts` (categorias, ícones, cores, filtro, busca;
   testes em `markers.test.ts`), `web/src/markerLayer.ts` (canvas único num pane próprio, hit
   test) e `web/src/markerPanel.ts` (painel, popup; recebe a calibração via
   `CalibrationPanel.onData`). Zoom do Leaflet fica no canto inferior direito.

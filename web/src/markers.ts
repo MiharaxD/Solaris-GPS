@@ -20,44 +20,46 @@ export interface GameMarker {
   source?: "map" | "personal";
 }
 
-export type Shape = "diamond" | "hexagon" | "square" | "triangle" | "circle";
+import type { MarkerIcon } from "./icons";
 
 export interface Category {
   id: string;
   label: string;
   color: string;
-  shape: Shape;
+  icon: MarkerIcon;
   /** Visível na primeira vez (as categorias com milhares de pontos começam desligadas). */
   defaultOn: boolean;
   /** Rótulos das subcategorias fixas (as outras usam o próprio nome). */
   subs?: Record<string, { label: string; color: string }>;
 }
 
+// Cores do dossiê visual: raridade em cinza → verde → azul → roxo → ouro (ouro só no que é raro)
+// e o resto nas famílias dos atributos (Aero, Glacio, Havoc...).
 export const CATEGORIES: readonly Category[] = [
-  { id: "beacon", label: "Teleportes", color: "#5ab4ff", shape: "diamond", defaultOn: true },
-  { id: "nexus", label: "Nexus", color: "#c58bff", shape: "hexagon", defaultOn: true },
+  { id: "beacon", label: "Teleportes", color: "#3FD3F2", icon: "beacon", defaultOn: true },
+  { id: "nexus", label: "Nexus", color: "#41AEFB", icon: "nexus", defaultOn: true },
   {
-    id: "chest", label: "Baús", color: "#f5c542", shape: "square", defaultOn: true,
+    id: "chest", label: "Baús", color: "#E8C46A", icon: "chest", defaultOn: true,
     subs: {
-      basic: { label: "Básico", color: "#c9d1d6" },
-      standard: { label: "Padrão", color: "#6fd08c" },
-      advanced: { label: "Avançado", color: "#5ab4ff" },
-      premium: { label: "Premium", color: "#f5c542" },
-      illusive: { label: "Ilusório", color: "#ff8fd0" },
+      basic: { label: "Básico", color: "#8A8F98" },
+      standard: { label: "Padrão", color: "#5FB36B" },
+      advanced: { label: "Avançado", color: "#4C8DE0" },
+      premium: { label: "Premium", color: "#E8C46A" },
+      illusive: { label: "Ilusório", color: "#A767D8" },
     },
   },
-  { id: "casket", label: "Sonance Caskets", color: "#ff9f43", shape: "triangle", defaultOn: true },
-  { id: "plant", label: "Plantas", color: "#7bd389", shape: "circle", defaultOn: false },
-  { id: "ore", label: "Minérios", color: "#e0a36b", shape: "circle", defaultOn: false },
-  { id: "collectible", label: "Outros coletáveis", color: "#f78fb3", shape: "circle", defaultOn: false },
-  { id: "personal", label: "Pessoais", color: "#ffffff", shape: "circle", defaultOn: true },
+  { id: "casket", label: "Sonance Caskets", color: "#F8E56C", icon: "casket", defaultOn: true },
+  { id: "plant", label: "Plantas", color: "#44C4A3", icon: "plant", defaultOn: false },
+  { id: "ore", label: "Minérios", color: "#D9925B", icon: "ore", defaultOn: false },
+  { id: "collectible", label: "Outros coletáveis", color: "#BE4981", icon: "collectible", defaultOn: false },
+  { id: "personal", label: "Pessoais", color: "#EDEFF2", icon: "personal", defaultOn: true },
 ];
 
 /** Categorias que viram referência do tracker e vão pro arquivo do mapa (não pro IndexedDB). */
 export const MAP_FILE_CATS: ReadonlySet<string> = new Set(["beacon", "nexus"]);
 
 const BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
-const FALLBACK: Category = { id: "?", label: "Outros", color: "#9fb0bc", shape: "circle", defaultOn: false };
+const FALLBACK: Category = { id: "?", label: "Outros", color: "#9AA3B2", icon: "dot", defaultOn: false };
 
 export function category(id: string): Category {
   return BY_ID.get(id) ?? FALLBACK;

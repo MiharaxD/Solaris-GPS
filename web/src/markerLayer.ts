@@ -1,5 +1,5 @@
 import L from "leaflet";
-import type { Shape } from "./markers";
+import { markerSprite, type MarkerIcon } from "./icons";
 
 /** Um marcador já convertido pra pixel do zoom máximo. */
 export interface PlacedItem<T> {
@@ -7,8 +7,8 @@ export interface PlacedItem<T> {
   px: number;
   py: number;
   color: string;
-  shape: Shape;
-  /** Raio base em px de tela, no zoom nativo. */
+  icon: MarkerIcon;
+  /** Meio-lado do ícone em px de tela, no zoom nativo. */
   size: number;
   /** Desenhado apagado (ex.: já encontrado). */
   dim?: boolean;
@@ -121,63 +121,52 @@ export class MarkerCanvasLayer<T> extends L.Layer {
     const origin = map.getPixelOrigin();
     const ox = origin.x + tl.x;
     const oy = origin.y + tl.y;
-    const k = Math.min(1.25, Math.max(0.6, 1 + 0.12 * (zoom - this.maxZoom())));
+    // longe do zoom nativo os ícones encolhem (até 55%) pra não virar uma massa só
+    const k = Math.min(1.15, Math.max(0.55, 1 + 0.1 * (zoom - this.maxZoom())));
     const drawn: typeof this.drawn = [];
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.75)";
+    const redraw = () => this.schedule();
+    ctx.imageSmoothingQuality = "high";
     for (const item of this.items) {
       const x = item.px * scale - ox;
       const y = item.py * scale - oy;
       const r = item.size * k;
       if (x < -r || y < -r || x > size.x + r || y > size.y + r) continue;
-      ctx.globalAlpha = item.dim ? 0.3 : 1;
-      ctx.fillStyle = item.color;
-      drawShape(ctx, item.shape, x, y, r);
-      ctx.fill();
-      ctx.stroke();
-      drawn.push({ item, x, y, r });
+      ctx.globalAlpha = item.dim ? 0.35 : 1;
+      const sprite = markerSprite(item.icon, item.color, redraw);
+      if (sprite) {
+        ctx.drawImage(sprite, x - r, y - r, r * 2, r * 2);
+      } else {
+        // o SVG ainda está decodificando: um ponto na cor até o próximo quadro
+        ctx.beginPath();
+        ctx.arc(x, y, r * 0.5, 0, Math.PI * 2);
+        ctx.fillStyle = item.color;
+        ctx.fill();
+      }
+      drawn.push({ item, x, y, r: r * 0.8 });
     }
     ctx.globalAlpha = 1;
     const hl = this.highlight;
     if (hl) {
       const x = hl.px * scale - ox;
       const y = hl.py * scale - oy;
+      const r = hl.size * k + 5;
+      // seleção: anel branco com quatro cantos técnicos, como o foco da UI do jogo
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#FFFFFF";
       ctx.beginPath();
-      ctx.arc(x, y, hl.size * k + 6, 0, Math.PI * 2);
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#f5c542";
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      const c = r + 5;
+      const t = 5;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+        ctx.moveTo(x + sx * c, y + sy * (c - t));
+        ctx.lineTo(x + sx * c, y + sy * c);
+        ctx.lineTo(x + sx * (c - t), y + sy * c);
+      }
       ctx.stroke();
     }
     this.drawn = drawn;
   }
-}
-
-function drawShape(ctx: CanvasRenderingContext2D, shape: Shape, x: number, y: number, r: number): void {
-  ctx.beginPath();
-  switch (shape) {
-    case "diamond":
-      ctx.moveTo(x, y - r * 1.25);
-      ctx.lineTo(x + r, y);
-      ctx.lineTo(x, y + r * 1.25);
-      ctx.lineTo(x - r, y);
-      break;
-    case "hexagon":
-      for (let i = 0; i < 6; i++) {
-        const a = Math.PI / 6 + (i * Math.PI) / 3;
-        ctx.lineTo(x + r * Math.cos(a), y + r * Math.sin(a));
-      }
-      break;
-    case "square":
-      ctx.rect(x - r * 0.85, y - r * 0.85, r * 1.7, r * 1.7);
-      return;
-    case "triangle":
-      ctx.moveTo(x, y - r * 1.15);
-      ctx.lineTo(x + r, y + r * 0.75);
-      ctx.lineTo(x - r, y + r * 0.75);
-      break;
-    case "circle":
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      return;
-  }
-  ctx.closePath();
 }

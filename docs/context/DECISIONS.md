@@ -109,3 +109,9 @@
 
 - **Não copiar código nem dados de outros sites de mapa** (Teyvat GPS, th.gl, appsample).
   Pode-se usar a descrição pública de como eles funcionam como referência de produto.
+
+- **Visual no código do dossiê do WuWa, com assets próprios**: neutros escuros e frios; cor
+  saturada só com significado (raridade dos baús em cinza→verde→azul→roxo→ouro, famílias de
+  atributo nas outras categorias, estado do tracker); ouro só pra valor (progresso, premium);
+  foco e seleção em branco. Nenhum asset do jogo: os ícones são SVG desenhados aqui, e
+  teleporte/Nexus só imitam a silhueta do minimapa.

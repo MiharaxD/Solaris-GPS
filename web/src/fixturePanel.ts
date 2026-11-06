@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { uiIcon } from "./icons";
 import { loadMapData, minimapScaleOf, patchMapData, type MinimapScale } from "./mapData";
 import type { MapInfo } from "./maps";
 import type { MapView } from "./mapView";
@@ -113,13 +114,14 @@ export class FixturePanel {
     this.measureBtn.addEventListener("click", () => void this.measure());
     this.saveScaleBtn.addEventListener("click", () => void this.saveScale(false));
     this.resetScaleBtn.addEventListener("click", () => void this.saveScale(true));
-    const close = h("button", { type: "button", className: "calib-close", textContent: "✕", title: "Fechar" });
+    const close = h("button", { type: "button", className: "calib-close", title: "Fechar" }, uiIcon("close", 14));
+    close.setAttribute("aria-label", "Fechar");
     close.addEventListener("click", () => this.toggle(false));
 
     this.root = h(
       "aside",
       { className: "calib-panel fx-panel", hidden: true },
-      h("header", {}, h("h2", { textContent: "Anotar fixture" }), close),
+      h("header", { className: "panel-head" }, uiIcon("camera", 18), h("h2", { textContent: "Anotar fixture" }), close),
       h("p", {
         className: "calib-hint",
         textContent: "1) abra um print de tela cheia do jogo · 2) clique no mapa onde você estava · 3) preencha e salve. " +

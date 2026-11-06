@@ -1,5 +1,12 @@
 import "leaflet/dist/leaflet.css";
+// Fontes empacotadas pelo Vite (nada vem de CDN): Inter pra UI, Chakra Petch pros rótulos técnicos.
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-500.css";
+import "@fontsource/inter/latin-600.css";
+import "@fontsource/chakra-petch/latin-500.css";
+import "@fontsource/chakra-petch/latin-600.css";
 import "./style.css";
+import { uiIcon, type UiIcon } from "./icons";
 import { loadMaps, type MapInfo } from "./maps";
 import { MapView } from "./mapView";
 import { createMapPicker } from "./mapPicker";
@@ -19,6 +26,26 @@ function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
   if (!node) throw new Error(`#${id} não existe no index.html`);
   return node as T;
+}
+
+/** Botão da barra superior: glifo de sistema + rótulo técnico. */
+function toolButton(label: string, icon: UiIcon, title?: string): HTMLButtonElement {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "tool-btn";
+  b.append(uiIcon(icon, 15), label);
+  if (title) b.title = title;
+  b.setAttribute("aria-pressed", "false");
+  return b;
+}
+
+function brand(): HTMLElement {
+  const b = document.createElement("div");
+  b.className = "brand";
+  const sub = document.createElement("small");
+  sub.textContent = "GPS";
+  b.append(uiIcon("logo", 18), "Solaris", sub);
+  return b;
 }
 
 async function start(): Promise<void> {
@@ -65,24 +92,17 @@ async function start(): Promise<void> {
     void underground.setMap(info);
   };
 
+  toolbar.append(brand());
   picker = createMapPicker(toolbar, maps, initial.name, activate);
-  const markersBtn = document.createElement("button");
-  markersBtn.type = "button";
-  markersBtn.className = "tool-btn";
-  markersBtn.textContent = "Marcadores";
+  const markersBtn = toolButton("Marcadores", "markers");
   markersBtn.setAttribute("aria-pressed", String(markers.isOpen));
   markersBtn.addEventListener("click", () => {
     markers.toggle();
     markersBtn.setAttribute("aria-pressed", String(markers.isOpen));
   });
   toolbar.append(markersBtn);
-  const ugBtn = document.createElement("button");
-  ugBtn.type = "button";
-  ugBtn.className = "tool-btn";
-  ugBtn.textContent = "Subterrâneo";
-  ugBtn.title = "Mostrar as cavernas e áreas subterrâneas por cima do mapa";
+  const ugBtn = toolButton("Subterrâneo", "layers", "Mostrar as cavernas e áreas subterrâneas por cima do mapa");
   ugBtn.hidden = true;
-  ugBtn.setAttribute("aria-pressed", "false");
   ugBtn.addEventListener("click", () => {
     underground.toggle();
     ugBtn.setAttribute("aria-pressed", String(underground.isOn));
@@ -92,12 +112,8 @@ async function start(): Promise<void> {
   underground.toggle(loadPref(UNDERGROUND_PREF) === "1");
   ugBtn.setAttribute("aria-pressed", String(underground.isOn));
   toolbar.append(ugBtn);
-  const calibBtn = document.createElement("button");
-  calibBtn.type = "button";
-  calibBtn.className = "tool-btn";
-  calibBtn.textContent = "Calibrar";
-  calibBtn.setAttribute("aria-pressed", "false");
-  const fixtureBtn = document.createElement("button");
+  const calibBtn = toolButton("Calibrar", "crosshair");
+  const fixtureBtn = toolButton("Fixture", "camera", "Anotar um print de tela cheia com a posição real (pra testar o tracker)");
   // Calibrar e Fixture usam o clique no mapa: só um aberto por vez.
   const syncModes = () => {
     calibBtn.setAttribute("aria-pressed", String(calibration.isOpen));
@@ -111,11 +127,6 @@ async function start(): Promise<void> {
     syncModes();
   });
   toolbar.append(calibBtn);
-  fixtureBtn.type = "button";
-  fixtureBtn.className = "tool-btn";
-  fixtureBtn.textContent = "Fixture";
-  fixtureBtn.title = "Anotar um print de tela cheia com a posição real (pra testar o tracker)";
-  fixtureBtn.setAttribute("aria-pressed", "false");
   fixtureBtn.addEventListener("click", () => {
     if (!fixtures.isOpen && calibration.isOpen) calibration.toggle(false);
     if (!fixtures.isOpen && tracker.isOpen) tracker.toggle(false);
@@ -123,12 +134,7 @@ async function start(): Promise<void> {
     syncModes();
   });
   toolbar.append(fixtureBtn);
-  const trackerBtn = document.createElement("button");
-  trackerBtn.type = "button";
-  trackerBtn.className = "tool-btn";
-  trackerBtn.textContent = "Tracker";
-  trackerBtn.title = "Compartilhar a tela do jogo e recortar o minimapa";
-  trackerBtn.setAttribute("aria-pressed", "false");
+  const trackerBtn = toolButton("Tracker", "radar", "Compartilhar a tela do jogo e recortar o minimapa");
   trackerBtn.addEventListener("click", () => {
     if (!tracker.isOpen) {
       if (calibration.isOpen) calibration.toggle(false);
@@ -141,11 +147,18 @@ async function start(): Promise<void> {
   // os ✕ dos painéis fecham sem passar pelos botões
   for (const r of [calibration.root, fixtures.root, tracker.root]) new MutationObserver(syncModes).observe(r, { attributes: true, attributeFilter: ["hidden"] });
   activate(initial.name);
+  // Os painéis da direita começam logo abaixo da barra, que pode quebrar em duas linhas.
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty("--toolbar-h", `${toolbar.offsetHeight}px`);
+  }).observe(toolbar);
 
   // Coordenada em pixel do zoom máximo sob o cursor (base da calibração e dos fixtures).
   view.leaflet.on("mousemove", (e) => {
     const p = view.toPixel(e.latlng);
-    hud.textContent = `px ${Math.round(p.x)}, ${Math.round(p.y)}`;
+    const label = document.createElement("span");
+    label.className = "hud-label";
+    label.textContent = "px";
+    hud.replaceChildren(label, `${Math.round(p.x)} · ${Math.round(p.y)}`);
   });
 
   // Exposto só para depuração no console do navegador.

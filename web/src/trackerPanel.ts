@@ -7,6 +7,7 @@
  * confiança, camada, Hz e ocupação do Worker). Nada sai do PC.
  */
 import type { Affine } from "./affine";
+import { uiIcon } from "./icons";
 import { CONFIG } from "./config";
 import { loadMapData, manualMarkersOf, minimapScaleOf } from "./mapData";
 import type { MapInfo } from "./maps";
@@ -154,7 +155,8 @@ export class TrackerPanel {
       this.manualEdit();
     });
     document.addEventListener("visibilitychange", () => this.onVisibility());
-    const close = h("button", { type: "button", className: "calib-close", textContent: "✕", title: "Fechar" });
+    const close = h("button", { type: "button", className: "calib-close", title: "Fechar" }, uiIcon("close", 14));
+    close.setAttribute("aria-label", "Fechar");
     close.addEventListener("click", () => {
       this.root.hidden = true;
     });
@@ -162,7 +164,7 @@ export class TrackerPanel {
     this.root = h(
       "aside",
       { className: "calib-panel trk-panel", hidden: true },
-      h("header", {}, h("h2", { textContent: "Tracker" }), close),
+      h("header", { className: "panel-head" }, uiIcon("radar", 18), h("h2", { textContent: "Tracker" }), close),
       h("p", {
         className: "calib-hint",
         textContent:

@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { uiIcon } from "./icons";
 import { anchorAt, apply, fitAffine, fitSimilarity, isMirrored, type Affine, type FitResult } from "./affine";
 import { buildLandMask, estimateCalibration, type Estimate, type LandMask } from "./autoCalib";
 import type { MapInfo } from "./maps";
@@ -73,7 +74,8 @@ export class CalibrationPanel {
 
   constructor(private readonly view: MapView) {
     this.refInput.setAttribute("list", this.refList.id);
-    const close = h("button", { type: "button", className: "calib-close", textContent: "✕", title: "Fechar" });
+    const close = h("button", { type: "button", className: "calib-close", title: "Fechar" }, uiIcon("close", 14));
+    close.setAttribute("aria-label", "Fechar");
     close.addEventListener("click", () => this.toggle(false));
     const download = h("button", { type: "button", textContent: "Baixar JSON", className: "secondary" });
     download.addEventListener("click", () => this.info && downloadMapData(this.info.name, this.serialize()));
@@ -94,7 +96,7 @@ export class CalibrationPanel {
     this.root = h(
       "aside",
       { className: "calib-panel", hidden: true },
-      h("header", {}, h("h2", { textContent: "Calibração" }), close),
+      h("header", { className: "panel-head" }, uiIcon("crosshair", 18), h("h2", { textContent: "Calibração" }), close),
       h("div", { className: "calib-actions" }, this.estimateBtn),
       h("label", { className: "calib-field" }, "Referência", this.refInput, this.refList),
       h("div", { className: "calib-actions" }, this.ignoreBtn),

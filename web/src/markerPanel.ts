@@ -17,6 +17,7 @@ import {
   type GameMarker,
 } from "./markers";
 import type { MapInfo } from "./maps";
+import { markerIconEl, uiIcon, type MarkerIcon } from "./icons";
 import { loadMapData } from "./mapData";
 import { mapLabel } from "./mapPicker";
 import { ImportDialog } from "./importDialog";
@@ -30,7 +31,8 @@ const HIDE_FOUND_PREF = "markers.hideFound";
 
 const fmtTally = (t: Tally) => `${t.found}/${t.total}`;
 
-const SIZE: Record<string, number> = { nexus: 7, beacon: 6, chest: 5, casket: 5.5 };
+/** Meio-lado do ícone em px de tela, no zoom nativo. */
+const SIZE: Record<string, number> = { nexus: 13, beacon: 12, chest: 10, casket: 10 };
 
 function h<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -42,10 +44,8 @@ function h<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function swatch(shape: string, color: string): HTMLSpanElement {
-  const el = h("span", { className: `mk-swatch ${shape}` });
-  el.style.setProperty("--c", color);
-  return el;
+function swatch(icon: MarkerIcon, color: string): HTMLImageElement {
+  return markerIconEl(icon, color, 20);
 }
 
 /** Marcador manual → formato comum do painel. */
@@ -118,7 +118,8 @@ export class MarkerPanel {
   ) {
     this.layer = new MarkerCanvasLayer(() => this.info?.maxZoom ?? 0);
     this.layer.addTo(view.leaflet);
-    const close = h("button", { type: "button", className: "mk-close", textContent: "✕", title: "Fechar" });
+    const close = h("button", { type: "button", className: "mk-close", title: "Fechar" }, uiIcon("close", 14));
+    close.setAttribute("aria-label", "Fechar");
     close.addEventListener("click", () => this.toggle(false));
     this.search.addEventListener("input", () => this.renderResults());
     this.hideFoundBox.checked = this.hideFound;
@@ -151,11 +152,11 @@ export class MarkerPanel {
     this.root = h(
       "aside",
       { className: "mk-panel", hidden: !this.open },
-      h("header", {}, h("h2", { textContent: "Marcadores" }), close),
+      h("header", { className: "panel-head" }, uiIcon("markers", 18), h("h2", { textContent: "Marcadores" }), close),
       this.status,
       this.progressLine,
       h("div", { className: "mk-actions" }, this.addBtn),
-      this.search,
+      h("label", { className: "mk-search" }, uiIcon("search", 15), this.search),
       this.results,
       this.cats,
       h("label", { className: "mk-check" }, this.hideFoundBox, "Esconder encontrados"),
@@ -385,8 +386,8 @@ export class MarkerPanel {
       const pos = m.px ?? (t ? apply(t, [m.x, m.y]) : null);
       if (!pos) continue;
       const c = category(m.cat);
-      const size = (SIZE[m.cat] ?? 4) + (m.source ? 1 : 0);
-      this.placed.set(m.id, { data: m, px: pos[0], py: pos[1], color: markerColor(m), shape: c.shape, size });
+      const size = (SIZE[m.cat] ?? 8) + (m.source ? 1 : 0);
+      this.placed.set(m.id, { data: m, px: pos[0], py: pos[1], color: markerColor(m), icon: c.icon, size });
     }
     this.renderStatus();
     this.renderProgress();
@@ -440,8 +441,14 @@ export class MarkerPanel {
       return;
     }
     const { all } = tallyMarkers(this.markers, this.foundHere(), this.ignored);
-    this.progressLine.textContent = `Encontrados: ${fmtTally(all)} (${percent(all)})`;
-    if (!this.progress.persistent) this.progressLine.textContent += " · sem IndexedDB: não será salvo";
+    const bar = h("span", { className: "mk-bar" });
+    bar.style.setProperty("--p", String(all.total ? all.found / all.total : 0));
+    this.progressLine.replaceChildren(
+      h("span", { className: "mk-progress-label", textContent: "Encontrados" }),
+      h("span", { className: "mk-progress-value", textContent: `${fmtTally(all)} · ${percent(all)}` }),
+      bar,
+    );
+    if (!this.progress.persistent) this.progressLine.append(h("span", { className: "mk-progress-warn", textContent: "Sem IndexedDB: o progresso não será salvo." }));
   }
 
   private async renderAllMaps(): Promise<void> {
@@ -540,7 +547,7 @@ export class MarkerPanel {
         "label",
         { className: "mk-cat" },
         box,
-        swatch(c.shape, c.color),
+        swatch(c.icon, c.color),
         h("span", { className: "mk-name", textContent: c.label }),
         h("span", { className: "mk-count", textContent: fmtTally(ct.tally) }),
       );
@@ -604,7 +611,7 @@ export class MarkerPanel {
         const btn = h(
           "button",
           { type: "button" },
-          swatch(category(m.cat).shape, markerColor(m)),
+          swatch(category(m.cat).icon, markerColor(m)),
           h("span", { className: "mk-name", textContent: m.name }),
           h("span", { className: "mk-area", textContent: m.area.slice(-2).join(" › ") }),
         );

@@ -12,6 +12,8 @@
     "fixtures": "vitest run --config vitest.fixtures.config.ts --silent=false"
   },
   "dependencies": {
+    "@fontsource/chakra-petch": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
     "leaflet": "^1.9.4"
   },
   "devDependencies": {
