@@ -4,8 +4,8 @@
 
 **Blocked by:** 25
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Detector de presença do minimapa com taxa de acerto medida
-- [ ] Estado pausado exibido no web
-- [ ] Retoma sozinho
+- [x] Detector de presença do minimapa com taxa de acerto medida (prints reais com minimapa; telas sem ele simuladas, faltam prints reais de menu)
+- [x] Estado pausado exibido no web
+- [x] Retoma sozinho
