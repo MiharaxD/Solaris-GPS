@@ -149,19 +149,19 @@ describe("TrackSession", () => {
     expect(Math.hypot(s.pos![0] - 405, s.pos![1] - 398)).toBeLessThan(2);
   });
 
-  it("anel fraco na região salva: acha o minimapa de novo na tela e segue", async () => {
+  it("anel fraco na região salva: pausa e não move a região (o minimapa é fixo)", async () => {
     const clock = { t: 0 };
     const s = new TrackSession(() => reader, () => clock.t);
-    s.setRegion({ cx: C + 40, cy: C + 30, r: 72, shape: "circle" }, "circle");
+    const saved = { cx: C + 40, cy: C + 30, r: 72, shape: "circle" as const };
+    s.setRegion(saved, "circle");
     s.setMap({ info, radiusPx: 60, refs: [] });
     s.findHere([400, 400]);
-    const r = await s.step(readOf(frameAt([400, 400])), 800, 600);
-    expect(r.detection).not.toBeNull();
-    expect(Math.abs(s.region!.cx - C)).toBeLessThan(2);
-    expect(Math.abs(s.region!.cy - C)).toBeLessThan(2);
-    clock.t += 100;
-    await s.step(readOf(frameAt([400, 400])), 800, 600);
-    expect(s.state).toBe("seguindo");
-    expect(Math.hypot(s.pos![0] - 400, s.pos![1] - 400)).toBeLessThan(2);
+    for (let i = 0; i < 5; i++) {
+      const r = await s.step(readOf(frameAt([400, 400])), 800, 600);
+      expect(r.detection).toBeNull();
+      clock.t += 1000;
+    }
+    expect(s.region).toEqual(saved);
+    expect(s.state).toBe("pausado");
   });
 });

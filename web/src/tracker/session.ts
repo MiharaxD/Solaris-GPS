@@ -10,7 +10,7 @@ import { detectIcons, type DetectedIcon } from "./icons";
 import { ImageLocator } from "./imageLocator";
 import { cameraView, DEFAULT_MASK } from "./locate";
 import { DEFAULT_JUMP, JumpGate, MotionFilter, type JumpOptions } from "./motion";
-import { detectMinimap, searchCorner, type MinimapRegion, type MinimapShape } from "./minimap";
+import { type MinimapRegion, type MinimapShape } from "./minimap";
 import { DEFAULT_PRESENCE, minimapPresence, PresenceGate, type PresenceOptions } from "./presence";
 import { processFrame, type ReadRect } from "./pipeline";
 import type { LocatedResult, MapConfig, ResultMessage, TrackState } from "./protocol";
@@ -36,11 +36,6 @@ export interface SessionOptions {
   sigma: Record<Confidence, number>;
   /** Presença do minimapa (ticket 27): ver `PresenceGate`. */
   presence: PresenceOptions;
-  /**
-   * Com o anel fraco na região (pausado ou quase), procura o minimapa na tela toda a cada tanto
-   * (ms; ~60 ms cada): a região salva pode ter ficado fora (resolução, HUD mexido).
-   */
-  redetectEvery: number;
 }
 
 export const DEFAULT_SESSION: SessionOptions = {
@@ -52,7 +47,6 @@ export const DEFAULT_SESSION: SessionOptions = {
   jump: DEFAULT_JUMP,
   sigma: { alta: 2, média: 4, baixa: 8 },
   presence: DEFAULT_PRESENCE,
-  redetectEvery: 1000,
 };
 
 /** Parte do resultado que a sessão calcula (o Worker põe o recorte e as medições). */
@@ -79,7 +73,6 @@ export class TrackSession {
   private readonly presence: PresenceGate;
   /** Início da pausa sem minimapa (null = rodando). */
   private pausedAt: number | null = null;
-  private lastRedetect = -Infinity;
 
   constructor(
     private readonly readerFor: (map: MapConfig) => TileReader,
@@ -250,25 +243,11 @@ export class TrackSession {
     let t = this.now();
     const p = minimapPresence(read, frameW, frameH, region, this.opt.presence);
     out.timings.presence = this.now() - t;
-    let score = p.score;
-    let moved = false;
-    // anel fraco: talvez a região tenha saído do lugar; procura na tela toda de vez em quando
-    if (score < this.opt.presence.present && t - this.lastRedetect >= this.opt.redetectEvery) {
-      this.lastRedetect = t;
-      const c = searchCorner(frameW, frameH);
-      const d = detectMinimap(read(0, 0, c.w, c.h), frameW, frameH, this.shape);
-      out.timings.redetect = this.now() - t;
-      if (d && d.score >= this.opt.presence.present && d.score > score + 0.1) {
-        this.region = { ...d.region, shape: this.shape };
-        out.detection = d;
-        score = d.score;
-        moved = true;
-      }
-    }
-    const visible = this.presence.update(score);
-    out.presence = { score, visible };
-    // o recorte deste frame veio da região velha: o rastreio segue no próximo
-    if (moved) return false;
+    // a região é fixa: o minimapa não muda de lugar no jogo. Anel fraco = minimapa fora da tela
+    // (mapa aberto, menu, loading), nunca "minimapa em outro lugar". Procurar de novo aqui pegava
+    // falsos anéis da tela do mapa e salvava a região errada.
+    const visible = this.presence.update(p.score);
+    out.presence = { score: p.score, visible };
     t = this.now();
     if (!visible) {
       this.pausedAt ??= t;

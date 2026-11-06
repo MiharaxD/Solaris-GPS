@@ -78,6 +78,8 @@
   Por quê: a área do mundo que o minimapa mostra não depende da resolução nem da escala de UI.
   Exige: um raio estável na tela. A detecção oscila 123–126 px a 1440p (até 3% de escala), então
   o rastreio deve usar a região ajustada/salva, não redetectar a cada frame.
+  A região é fixa: a detecção só roda sem região salva pra resolução ou pelo botão. Anel fraco
+  só pausa (ticket 27); procurar de novo sozinho achava falsos anéis com o mapa aberto e salvava.
 
 - **Algoritmos do tracker (Fase 2, escolhidos pelos 9 fixtures; tabelas no runner):** posição
   pela camada imagem (NCC em cinza, cone mascarado, ~25 ms/frame), conferida pelos ícones
