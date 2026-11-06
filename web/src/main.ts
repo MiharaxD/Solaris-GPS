@@ -18,6 +18,12 @@ import { TrackerPanel } from "./trackerPanel";
 import { MarkerPanel } from "./markerPanel";
 import { ProgressStore } from "./progress";
 import { UndergroundLayer } from "./underground";
+import { Hotkeys } from "./hotkeys";
+import { SettingsDialog } from "./settingsDialog";
+import { RegionPicker } from "./regionPicker";
+import { markerTitle, type GameMarker } from "./markers";
+import { toast } from "./toast";
+import L from "leaflet";
 
 const ACTIVE_MAP_PREF = "activeMap";
 const UNDERGROUND_PREF = "underground";
@@ -94,6 +100,20 @@ async function start(): Promise<void> {
 
   toolbar.append(brand());
   picker = createMapPicker(toolbar, maps, initial.name, activate);
+
+  // Região onde o jogador está (Overworld): limita a busca do tracker e enquadra a região.
+  const regionPicker = new RegionPicker((region, byUser) => {
+    tracker.setSearchArea(region?.rect ?? null);
+    if (!byUser) return;
+    if (region) {
+      const r = region.rect;
+      view.leaflet.flyToBounds(L.latLngBounds(view.toLatLng({ x: r.x0, y: r.y0 }), view.toLatLng({ x: r.x1, y: r.y1 })), { duration: 0.6 });
+    }
+    const rescanned = tracker.rescan();
+    toast(region ? `Tracker procurando só em ${region.label}${rescanned ? "" : " (quando estiver rastreando)"}.` : "Tracker procurando no mapa inteiro.");
+  });
+  picker.after(regionPicker.root);
+  markers.onRegions((regions) => regionPicker.setRegions(view.active?.name ?? "", regions));
   const markersBtn = toolButton("Marcadores", "markers");
   markersBtn.setAttribute("aria-pressed", String(markers.isOpen));
   markersBtn.addEventListener("click", () => {
@@ -144,6 +164,40 @@ async function start(): Promise<void> {
     syncModes();
   });
   toolbar.append(trackerBtn);
+  // Atalhos do mapa e configurações (backup, esconder coletados, teclas).
+  const describe = markerTitle;
+  const collect = async () => {
+    const m = await markers.collectNearest();
+    if (m) toast(`Coletado: ${describe(m)}${hotkeys.label("undo") ? ` · ${hotkeys.label("undo")} desfaz` : ""}`);
+    else toast("Nenhum marcador visível perto do jogador (o tracker está rastreando?).", "warn");
+  };
+  const hotkeys: Hotkeys = new Hotkeys({
+    collect: () => void collect(),
+    undo: () =>
+      void markers.undoLast().then((m) => toast(m ? `Desfeito: ${describe(m)}` : "Nada pra desfazer.", m ? "ok" : "warn")),
+    follow: () => {
+      tracker.toggleFollow();
+      toast(tracker.following ? "Seguindo o jogador." : "Parou de seguir.");
+    },
+    rescan: () => {
+      if (tracker.rescan()) toast("Procurando o jogador…");
+      else toast("O tracker não está rastreando (compartilhe a tela no painel Tracker).", "warn");
+    },
+  });
+  tracker.onCollect = () => void collect();
+  tracker.onPlayer((px) => markers.setPlayer(px));
+  let nearest: GameMarker | null = null;
+  const syncNearest = () => tracker.setNearest(nearest, hotkeys.label("collect"));
+  markers.onNearest((m) => {
+    nearest = m;
+    syncNearest();
+  });
+  hotkeys.onChange(syncNearest);
+  const settings = new SettingsDialog(markers, hotkeys);
+  const settingsBtn = toolButton("Config.", "gear", "Configurações: backup, esconder coletados e atalhos");
+  settingsBtn.addEventListener("click", () => settings.open());
+  toolbar.append(settingsBtn);
+
   // os ✕ dos painéis fecham sem passar pelos botões
   for (const r of [calibration.root, fixtures.root, tracker.root]) new MutationObserver(syncModes).observe(r, { attributes: true, attributeFilter: ["hidden"] });
   activate(initial.name);
@@ -170,6 +224,7 @@ async function start(): Promise<void> {
     fixtures,
     tracker,
     underground,
+    hotkeys,
     mapData: { load: loadMapData, save: saveMapData, download: downloadMapData },
   };
 }

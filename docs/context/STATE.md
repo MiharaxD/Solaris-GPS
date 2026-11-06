@@ -24,8 +24,8 @@
   busca sem acento e popup. Plantas, minérios e coletáveis começam desligados.
   A contagem de baús inclui os que só aparecem após puzzle/desafio ("玩法刷新", "程序封锁").
 - Progresso (ticket 12): encontrados no IndexedDB do navegador (popup ou botão direito),
-  contagem x/y por categoria, por mapa e de todos os mapas, "Esconder encontrados" e
-  Backup/Restaurar em JSON. Os ids (`e<EntityId>`, `tp-<Id>`) precisam ficar estáveis entre
+  contagem x/y por categoria, por mapa e de todos os mapas. Backup/Restaurar/Importar e
+  "esconder coletados" (baús, caskets, outros) ficam nas Configurações (botão "Config."). Os ids (`e<EntityId>`, `tp-<Id>`) precisam ficar estáveis entre
   regenerações dos marcadores, senão o progresso se perde.
 - Marcadores manuais (ticket 13): teleporte/Nexus em `data/maps` (`manualMarkers`, px), os
   outros no IndexedDB e no backup. Nos 3 mapas sem dados (honami, dimmr, mengzhou), os
@@ -141,7 +141,10 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 28 (auto-collect e atalhos), depois o 🛑 29. O item pendente do
+- Ticket 28 (auto-collect e atalhos), depois o 🛑 29. Já feito do 28: atalhos da página
+  (Alt+F coleta o visível mais próximo, ligado ao jogador por linha pontilhada; Alt+Z desfaz;
+  Alt+S segue; Alt+R reescaneia), editáveis nas Configurações. Faltam o auto-collect por raio
+  e a extensão de atalho global (com o jogo em foco a página não ouve o teclado). O item pendente do
   22 depende de direção anotada nos prints. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram

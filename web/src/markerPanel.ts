@@ -21,6 +21,7 @@ import type { MapInfo } from "./maps";
 import { markerIconEl, uiIcon, type MarkerIcon } from "./icons";
 import { loadMapData } from "./mapData";
 import { mapLabel } from "./mapPicker";
+import { computeRegions, type Region } from "./regions";
 import { ImportDialog } from "./importDialog";
 import { parseBackup, percent, tallyMarkers, type ManualMarker, type ProgressStore, type Tally } from "./progress";
 import type { MapView } from "./mapView";
@@ -29,6 +30,24 @@ import { loadPref, savePref } from "./storage";
 const FILTER_PREF = "markers.filter";
 const OPEN_PREF = "markers.open";
 const HIDE_FOUND_PREF = "markers.hideFound";
+const HIDE_FOUND_CATS_PREF = "markers.hideFoundCats";
+/** Grupos do "esconder coletados" nas configurações: baús, caskets e o resto. */
+export type HideFoundGroup = "chest" | "casket" | "other";
+const groupOf = (cat: string): HideFoundGroup => (cat === "chest" || cat === "casket" ? cat : "other");
+/** Quantas marcações o desfazer guarda. */
+const UNDO_LIMIT = 50;
+
+function loadHideFound(): Set<HideFoundGroup> {
+  const raw = loadPref(HIDE_FOUND_CATS_PREF);
+  if (raw === null) return new Set(loadPref(HIDE_FOUND_PREF) === "1" ? ["chest", "casket", "other"] : []); // pref antiga: tudo
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (Array.isArray(v)) return new Set(v.filter((x): x is HideFoundGroup => x === "chest" || x === "casket" || x === "other"));
+  } catch {
+    /* corrompida */
+  }
+  return new Set();
+}
 
 const fmtTally = (t: Tally) => `${t.found}/${t.total}`;
 
@@ -93,7 +112,19 @@ export class MarkerPanel {
   private filter: FilterState = parseFilter(loadPref(FILTER_PREF));
   private open = loadPref(OPEN_PREF) !== "0";
   private loadSeq = 0;
-  private hideFound = loadPref(HIDE_FOUND_PREF) === "1";
+  private hideFound = loadHideFound();
+  /** Marcações de encontrado feitas nesta sessão, pro desfazer (mais recente no fim). */
+  private history: { map: string; id: string }[] = [];
+  /** Posição do jogador (tracker), pro "mais próximo". */
+  private player: [number, number] | null = null;
+  private nearest: PlacedItem<GameMarker> | null = null;
+  private readonly link: L.Polyline;
+  private readonly linkEnd: L.CircleMarker;
+  private nearestListeners = new Set<(m: GameMarker | null) => void>();
+  private regionListeners = new Set<(r: Region[]) => void>();
+  private regionList: Region[] = [];
+  /** O que está desenhado agora (filtro + esconder coletados): a base do "mais próximo". */
+  private visibleItems: PlacedItem<GameMarker>[] = [];
   /** Grupos de subcategoria abertos (sobrevivem ao redesenho do painel). */
   private openGroups = new Set<string>();
   /** Texto do filtro de tipos de cada menu (sobrevive ao redesenho). */
@@ -106,7 +137,6 @@ export class MarkerPanel {
   private readonly results = h("ul", { className: "mk-results" });
   private readonly cats = h("div", { className: "mk-cats" });
   private readonly progressLine = h("p", { className: "mk-progress" });
-  private readonly hideFoundBox = h("input", { type: "checkbox" });
   private readonly allMaps = h("details", { className: "mk-allmaps" });
   private readonly allMapsList = h("ul", { className: "mk-allmaps-list" });
   private readonly addBtn = h("button", { type: "button", className: "mk-btn", textContent: "+ Novo marcador" });
@@ -125,32 +155,10 @@ export class MarkerPanel {
     close.setAttribute("aria-label", "Fechar");
     close.addEventListener("click", () => this.toggle(false));
     this.search.addEventListener("input", () => this.renderResults());
-    this.hideFoundBox.checked = this.hideFound;
-    this.hideFoundBox.addEventListener("change", () => {
-      this.hideFound = this.hideFoundBox.checked;
-      savePref(HIDE_FOUND_PREF, this.hideFound ? "1" : "0");
-      this.applyFilter();
-    });
     this.allMaps.append(h("summary", { textContent: "Progresso em todos os mapas" }), this.allMapsList);
     this.allMaps.addEventListener("toggle", () => {
       if (this.allMaps.open) void this.renderAllMaps();
     });
-
-    const backupBtn = h("button", { type: "button", className: "mk-btn", textContent: "Backup" });
-    backupBtn.title = "Baixa um JSON com todos os encontrados";
-    backupBtn.addEventListener("click", () => this.downloadBackup());
-    const file = h("input", { type: "file", accept: ".json,application/json", hidden: true });
-    file.addEventListener("change", () => {
-      const f = file.files?.[0];
-      file.value = "";
-      if (f) void this.restoreFrom(f);
-    });
-    const restoreBtn = h("button", { type: "button", className: "mk-btn", textContent: "Restaurar…" });
-    restoreBtn.title = "Substitui o progresso pelo de um backup";
-    restoreBtn.addEventListener("click", () => file.click());
-    const importBtn = h("button", { type: "button", className: "mk-btn", textContent: "Importar th.gl…" });
-    importBtn.title = 'Marca encontrados a partir do backup do th.gl ("id@x:y")';
-    importBtn.addEventListener("click", () => this.openImport());
 
     this.root = h(
       "aside",
@@ -162,10 +170,11 @@ export class MarkerPanel {
       h("label", { className: "mk-search" }, uiIcon("search", 15), this.search),
       this.results,
       this.cats,
-      h("label", { className: "mk-check" }, this.hideFoundBox, "Esconder encontrados"),
       this.allMaps,
-      h("div", { className: "mk-actions" }, backupBtn, restoreBtn, importBtn, file),
     );
+    // linha pontilhada jogador → marcador mais próximo (o que o atalho marcaria)
+    this.link = L.polyline([], { className: "nearest-link", interactive: false, dashArray: "2 7", weight: 2.5, lineCap: "round" });
+    this.linkEnd = L.circleMarker([0, 0], { className: "nearest-ring", interactive: false, radius: 15, weight: 1.5, fill: false, dashArray: "3 4" });
     this.addBtn.title = "Clique no botão e depois no mapa (Esc cancela)";
     this.addBtn.addEventListener("click", () => this.setMode(this.mode?.kind === "add" ? null : { kind: "add" }));
     document.addEventListener("keydown", (e) => {
@@ -392,6 +401,8 @@ export class MarkerPanel {
       const size = (SIZE[m.cat] ?? 8) + (m.source ? 1 : 0);
       this.placed.set(m.id, { data: m, px: pos[0], py: pos[1], color: markerColor(m), icon: c.icon, size });
     }
+    this.regionList = computeRegions([...this.placed.values()].map((p) => ({ area: p.data.area, px: p.px, py: p.py })));
+    for (const fn of this.regionListeners) fn(this.regionList);
     this.renderStatus();
     this.renderProgress();
     this.renderCats();
@@ -405,9 +416,11 @@ export class MarkerPanel {
     for (const p of this.placed.values()) p.dim = found.has(p.data.id);
     // ordem de desenho: categorias menos numerosas por cima (último desenhado fica no topo)
     const order = new Map(CATEGORIES.map((c, i) => [c.id, CATEGORIES.length - i]));
-    const items = [...this.placed.values()].filter((p) => visible(p.data) && !(this.hideFound && p.dim));
+    const items = [...this.placed.values()].filter((p) => visible(p.data) && !(p.dim && this.hideFound.has(groupOf(p.data.cat))));
     items.sort((a, b) => (order.get(a.data.cat) ?? 0) - (order.get(b.data.cat) ?? 0));
     this.layer.setItems(items);
+    this.visibleItems = items;
+    this.updateNearest();
   }
 
   private setFilter(next: FilterState): void {
@@ -433,6 +446,7 @@ export class MarkerPanel {
     const value = !this.progress.isFound(this.info.name, m.id);
     try {
       await this.progress.setFound(this.info.name, m.id, value);
+      if (value) this.remember(this.info.name, m.id);
     } catch (e) {
       this.status.textContent = `Não salvou o progresso (${(e as Error).message}).`;
     }
@@ -477,14 +491,12 @@ export class MarkerPanel {
     );
   }
 
-  private openImport(): void {
+  /** Importador do backup do th.gl pro mapa ativo; devolve um aviso quando não dá. */
+  openImport(): string | null {
     const info = this.info;
-    if (!info) return;
+    if (!info) return "Nenhum mapa ativo.";
     const markers = this.dataMarkers.filter((m) => !this.ignored.has(m.id));
-    if (!markers.length) {
-      this.status.textContent = "Este mapa não tem marcadores do WutheringData pra casar.";
-      return;
-    }
+    if (!markers.length) return "Este mapa não tem marcadores do WutheringData pra casar.";
     this.importer ??= new ImportDialog();
     this.importer.open({
       mapLabel: mapLabel(info.name),
@@ -492,9 +504,10 @@ export class MarkerPanel {
       isFound: (id) => this.progress.isFound(info.name, id),
       apply: (ids) => this.progress.setFoundMany(info.name, ids, true),
     });
+    return null;
   }
 
-  private downloadBackup(): void {
+  downloadBackup(): void {
     const b = this.progress.backup();
     const blob = new Blob([JSON.stringify(b, null, 1) + "\n"], { type: "application/json" });
     const a = document.createElement("a");
@@ -504,19 +517,120 @@ export class MarkerPanel {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  private async restoreFrom(file: File): Promise<void> {
+  /** Restaura um backup (pede confirmação); devolve a mensagem pro usuário. */
+  async restoreFrom(file: File): Promise<string> {
     try {
       if (file.size > 20_000_000) throw new Error("arquivo grande demais");
       const b = parseBackup(JSON.parse(await file.text()));
       const n = Object.values(b.found).reduce((a, ids) => a + ids.length, 0);
       const when = b.exportedAt ? ` (de ${b.exportedAt.slice(0, 10)})` : "";
-      if (!confirm(`Restaurar ${n} encontrados${when}? O progresso atual será substituído.`)) return;
+      if (!confirm(`Restaurar ${n} encontrados${when}? O progresso atual será substituído.`)) return "Restauração cancelada.";
       await this.progress.restore(b);
-      this.status.textContent = `Restaurados ${n} encontrados.`;
+      this.history = [];
+      return `Restaurados ${n} encontrados.`;
     } catch (e) {
-      this.status.textContent = `Backup inválido: ${(e as Error).message}.`;
+      return `Backup inválido: ${(e as Error).message}.`;
     }
   }
+
+  // ---- Esconder coletados (configurações) ----
+
+  isHidingFound(group: HideFoundGroup): boolean {
+    return this.hideFound.has(group);
+  }
+
+  setHideFound(group: HideFoundGroup, on: boolean): void {
+    if (on) this.hideFound.add(group);
+    else this.hideFound.delete(group);
+    savePref(HIDE_FOUND_CATS_PREF, JSON.stringify([...this.hideFound]));
+    this.applyFilter();
+  }
+
+  // ---- Regiões ----
+
+  get regions(): readonly Region[] {
+    return this.regionList;
+  }
+
+  onRegions(fn: (r: Region[]) => void): void {
+    this.regionListeners.add(fn);
+  }
+
+  // ---- Mais próximo do jogador, marcar e desfazer ----
+
+  /** Posição do jogador vinda do tracker (px do zoom máximo); null = sem posição. */
+  setPlayer(px: [number, number] | null): void {
+    this.player = px;
+    this.updateNearest();
+  }
+
+  onNearest(fn: (m: GameMarker | null) => void): void {
+    this.nearestListeners.add(fn);
+  }
+
+  /** Marca como encontrado o marcador visível (e ainda não encontrado) mais próximo do jogador. */
+  async collectNearest(): Promise<GameMarker | null> {
+    const item = this.nearest;
+    const map = this.info?.name;
+    if (!item || !map) return null;
+    await this.progress.setFound(map, item.data.id, true);
+    this.remember(map, item.data.id);
+    return item.data;
+  }
+
+  /** Desfaz a última marcação de encontrado (do atalho, do popup ou do botão direito). */
+  async undoLast(): Promise<GameMarker | null> {
+    for (;;) {
+      const last = this.history.pop();
+      if (!last) return null;
+      if (!this.progress.isFound(last.map, last.id)) continue; // já desmarcado por outro caminho
+      await this.progress.setFound(last.map, last.id, false);
+      return this.markers.find((m) => m.id === last.id) ?? null;
+    }
+  }
+
+  get canUndo(): boolean {
+    return this.history.length > 0;
+  }
+
+  private remember(map: string, id: string): void {
+    this.history.push({ map, id });
+    if (this.history.length > UNDO_LIMIT) this.history.shift();
+  }
+
+  /** Recalcula o mais próximo entre os visíveis ainda não encontrados e redesenha a linha. */
+  private updateNearest(): void {
+    const p = this.player;
+    let best: PlacedItem<GameMarker> | null = null;
+    if (p) {
+      let bd = Infinity;
+      for (const it of this.visibleItems) {
+        if (it.dim) continue;
+        const d = (it.px - p[0]) ** 2 + (it.py - p[1]) ** 2;
+        if (d < bd) {
+          bd = d;
+          best = it;
+        }
+      }
+    }
+    const map = this.view.leaflet;
+    if (p && best) {
+      const a = this.view.toLatLng({ x: p[0], y: p[1] });
+      const b = this.view.toLatLng({ x: best.px, y: best.py });
+      this.link.setLatLngs([a, b]);
+      this.linkEnd.setLatLng(b);
+      if (!map.hasLayer(this.link)) this.link.addTo(map);
+      if (!map.hasLayer(this.linkEnd)) this.linkEnd.addTo(map);
+    } else {
+      this.link.remove();
+      this.linkEnd.remove();
+    }
+    if (best !== this.nearest) {
+      this.nearest = best;
+      for (const fn of this.nearestListeners) fn(best?.data ?? null);
+    }
+  }
+
 
   private renderStatus(): void {
     const name = this.info?.name ?? "";

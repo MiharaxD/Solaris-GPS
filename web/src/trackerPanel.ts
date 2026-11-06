@@ -7,7 +7,9 @@
  * confiança, camada, Hz e ocupação do Worker). Nada sai do PC.
  */
 import type { Affine } from "./affine";
-import { uiIcon } from "./icons";
+import { markerIconEl, uiIcon } from "./icons";
+import { category, markerColor, markerTitle, type GameMarker } from "./markers";
+import type { Rect } from "./tracker/globalSearch";
 import { CONFIG } from "./config";
 import { loadMapData, manualMarkersOf, minimapScaleOf } from "./mapData";
 import type { MapInfo } from "./maps";
@@ -104,6 +106,12 @@ export class TrackerPanel {
   private readonly hud = h("div", { className: "trk-hud" });
   private readonly stats = h("div", { className: "trk-stats" });
   private readonly followBtn = h("button", { type: "button", className: "trk-follow", textContent: "Seguir" });
+  /** Card do marcador mais próximo (o que o atalho marcaria) e o botão de coletar. */
+  private readonly nextBox = h("div", { className: "trk-next", hidden: true });
+  private readonly collectBtn = h("button", { type: "button", className: "trk-follow trk-collect", textContent: "Coletar mais próximo", disabled: true });
+  private area: Rect | null = null;
+  /** Quem trata o botão "Coletar mais próximo" (o main liga no painel de marcadores). */
+  onCollect: (() => void) | null = null;
   private readonly findBtn = h("button", { type: "button", className: "secondary", textContent: "Achar no mapa", disabled: true });
   private readonly findMeBtn = h("button", { type: "button", className: "secondary", textContent: "Find me", disabled: true });
   private readonly posInfo = h("p", { className: "calib-status", role: "status" } as Partial<HTMLParagraphElement>);
@@ -182,8 +190,50 @@ export class TrackerPanel {
       h("div", { className: "calib-actions" }, this.findBtn, this.findMeBtn),
       this.posInfo,
     );
-    this.preview = h("div", { className: "trk-preview", hidden: true }, this.canvas, this.hud, this.stats, this.followBtn);
+    this.collectBtn.addEventListener("click", () => this.onCollect?.());
+    this.preview = h("div", { className: "trk-preview", hidden: true }, this.canvas, this.hud, this.stats, this.nextBox, this.followBtn, this.collectBtn);
     this.renderInputs();
+  }
+
+  /** Posição exibida do jogador no mapa (null = sem posição ou só palpite). */
+  onPlayer(fn: (px: [number, number] | null) => void): void {
+    this.playerView.onMove(fn);
+  }
+
+  /** Procura o jogador de novo no mapa (ou na região escolhida). false = não está rastreando. */
+  rescan(): boolean {
+    if (this.findBtn.disabled) return false;
+    this.findBtn.click();
+    return true;
+  }
+
+  get following(): boolean {
+    return this.playerView.following;
+  }
+
+  toggleFollow(): void {
+    this.playerView.setFollow(!this.playerView.following);
+  }
+
+  /** Região escolhida (px do zoom máximo): a busca no mapa inteiro fica só dentro dela. */
+  setSearchArea(area: Rect | null): void {
+    this.area = area;
+    this.send({ type: "area", area });
+  }
+
+  /** Mostra o marcador mais próximo na prévia, com o atalho que o marca. */
+  setNearest(m: GameMarker | null, hotkey: string): void {
+    this.nextBox.hidden = !m;
+    this.collectBtn.disabled = !m;
+    this.collectBtn.title = hotkey ? `Marca o mais próximo como coletado (${hotkey})` : "Marca o mais próximo como coletado";
+    if (!m) return;
+    this.nextBox.replaceChildren(
+      markerIconEl(category(m.cat).icon, markerColor(m), 22),
+      h("span", { className: "trk-next-text" },
+        h("span", { className: "trk-next-label", textContent: "Mais próximo" }),
+        h("span", { className: "trk-next-name", textContent: markerTitle(m) })),
+      hotkey ? h("kbd", { textContent: hotkey }) : "",
+    );
   }
 
   get sharing(): boolean {
@@ -268,6 +318,7 @@ export class TrackerPanel {
     if (width && height) this.useFrameSize(width, height);
     this.sendConfig();
     if (this.mapConfig) this.send({ type: "map", map: this.mapConfig });
+    this.send({ type: "area", area: this.area });
 
     const Processor = (globalThis as unknown as { MediaStreamTrackProcessor?: TrackProcessorCtor }).MediaStreamTrackProcessor;
     if (Processor) {

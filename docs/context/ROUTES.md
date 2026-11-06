@@ -70,6 +70,15 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Progresso (ticket 12):** `web/src/progress.ts` (`ProgressStore` no IndexedDB, backup
   `parseBackup`/`makeBackup`, `tallyMarkers`; testes em `progress.test.ts`). O painel de
   marcadores mostra e alterna. Cuidado: os ids dos marcadores são a chave do progresso.
+- **Configurações, atalhos e "mais próximo":** `web/src/settingsDialog.ts` (abas Geral e
+  Atalhos), `web/src/hotkeys.ts` (combinação por `code`, prefs, conflitos; testes em
+  `hotkeys.test.ts`), `web/src/toast.ts`. No `markerPanel.ts`: `setPlayer`/`updateNearest`
+  (linha `.nearest-link`, só entre os itens desenhados e não encontrados), `collectNearest`,
+  `undoLast` (histórico da sessão) e `setHideFound` por grupo. A ligação fica no `main.ts`.
+- **Região do tracker:** `web/src/regions.ts` (retângulo por área de topo dos marcadores,
+  nação inteira; testes em `regions.test.ts`), `web/src/regionPicker.ts` (seletor na barra,
+  salvo por mapa) → `TrackerPanel.setSearchArea` → mensagem `area` → `TrackSession.setArea`
+  → `GlobalLocator.locate(..., area)` (só a busca no mapa inteiro; a guiada por ícones não).
 - **Marcadores manuais (ticket 13):** formulário e modos de clique em `markerPanel.ts`
   (`openForm`, `saveManual`, `setMode`); `manualMarkersOf`/`patchMapData` em `mapData.ts`;
   pessoais em `ProgressStore` (`putPersonal`/`deletePersonal`). `MAP_FILE_CATS` (markers.ts)

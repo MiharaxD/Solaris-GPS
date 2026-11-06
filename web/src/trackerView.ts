@@ -42,6 +42,7 @@ export class TrackerView {
   private readonly marker: L.Marker;
   private follow = loadPref(FOLLOW_PREF) !== "0";
   private listeners = new Set<(on: boolean) => void>();
+  private moveListeners = new Set<(px: [number, number] | null) => void>();
 
   constructor(private readonly view: MapView) {
     this.arrow.className = "trk-arrow";
@@ -74,6 +75,11 @@ export class TrackerView {
     if (on && this.view.leaflet.hasLayer(this.marker)) this.view.leaflet.panTo(this.marker.getLatLng(), { animate: true, duration: 0.3 });
   }
 
+  /** Posição exibida do jogador (null = some ou é só um palpite). */
+  onMove(fn: (px: [number, number] | null) => void): void {
+    this.moveListeners.add(fn);
+  }
+
   /** `deg` = direção (0 = norte, horário); null mantém a anterior. */
   show(px: [number, number], deg: number | null, look: PlayerLook): void {
     const ll = this.view.toLatLng({ x: px[0], y: px[1] });
@@ -86,6 +92,7 @@ export class TrackerView {
     this.arrow.dataset.look = look;
     this.cone.dataset.look = look;
     if (this.follow && look !== "palpite") this.view.leaflet.panTo(ll, { animate: true, duration: 0.25, noMoveStart: true });
+    for (const fn of this.moveListeners) fn(look === "palpite" ? null : px);
   }
 
   /** Cone de visão da câmera; null = não achado neste frame (o último fica um pouco). */
@@ -111,5 +118,6 @@ export class TrackerView {
 
   hide(): void {
     this.marker.remove();
+    for (const fn of this.moveListeners) fn(null);
   }
 }

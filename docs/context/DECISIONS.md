@@ -115,3 +115,10 @@
   atributo nas outras categorias, estado do tracker); ouro só pra valor (progresso, premium);
   foco e seleção em branco. Nenhum asset do jogo: os ícones são SVG desenhados aqui, e
   teleporte/Nexus só imitam a silhueta do minimapa.
+
+- **Região escolhida limita só a busca no mapa inteiro.** O retângulo vem dos próprios
+  marcadores (área de topo do WutheringData, quantis 0,5–99,5% + 600 px). A busca guiada por
+  ícones (logo após teleporte) e o rastreio local não olham a região, pra um TP pra outra
+  região ainda funcionar. Errar a região faz o tracker não achar: o usuário troca no seletor.
+- **"Coletar o mais próximo" só vê o que está desenhado**: respeita categoria, tipo e
+  "esconder coletados", e pula os já encontrados. Os atalhos são da página (não globais).

@@ -69,6 +69,13 @@ export function subLabel(m: Pick<GameMarker, "cat" | "sub">): string {
   return category(m.cat).subs?.[m.sub]?.label ?? m.sub;
 }
 
+/** Nome pra mostrar com a subcategoria quando ela acrescenta algo ("Angelica", não "Baú padrão · Padrão"). */
+export function markerTitle(m: Pick<GameMarker, "cat" | "sub" | "name">): string {
+  const sub = subLabel(m);
+  const name = m.name || category(m.cat).label;
+  return sub && !fold(name).includes(fold(sub)) ? `${name} · ${sub}` : name;
+}
+
 export function markerColor(m: Pick<GameMarker, "cat" | "sub">): string {
   const c = category(m.cat);
   return c.subs?.[m.sub]?.color ?? c.color;
