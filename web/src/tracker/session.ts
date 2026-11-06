@@ -211,6 +211,11 @@ export class TrackSession {
       fused = fuseLocal(L, refFix);
       // nada casou em volta e há ícone sob a seta: provável teleporte, busca guiada no próximo frame
       if (!fused && iconAtCenter(icons, r)) this.wantGlobal = true;
+      // só a referência, sem a imagem confirmar: no modo "prev" ela escolhe o ícone do tipo mais
+      // perto da posição anterior, então confirma um lugar errado pra sempre (teleporte pra outro
+      // Nexus a mais de `maxJump` → o Nexus antigo "casa" de novo e o rastreio nunca se perde).
+      // De tempos em tempos a busca guiada confere todos os ícones do tipo pela imagem.
+      else if (fused?.layer === "referências" && refFix?.mode === "prev" && t - this.lastGlobal >= this.opt.globalEvery) this.wantGlobal = true;
       timings.locate = this.now() - t;
     }
     out.located = located;

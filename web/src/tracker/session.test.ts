@@ -149,6 +149,51 @@ describe("TrackSession", () => {
     expect(Math.hypot(s.pos![0] - 405, s.pos![1] - 398)).toBeLessThan(2);
   });
 
+  it("teleporte pra outro Nexus longe: a referência sozinha não prende no Nexus antigo", async () => {
+    // em volta do Nexus antigo o mapa é liso: a camada imagem não casa nada ali (como no jogo,
+    // onde o minimapa do lugar novo não casa em volta do velho) e só a referência sobra
+    const flat: typeof map = { ...map, data: new Float32Array(map.data) };
+    for (let y = 200; y < 600; y++) for (let x = 200; x < 600; x++) flat.data[y * SIZE + x] = 90;
+    const flatReader = pyramid(flat, 2, 0, 256);
+    // Nexus (anel) sob a seta, na escala do minimapa de raio 72 (21,5 px a raio 126)
+    const at = (p: [number, number]): Rgba => {
+      const f = withRing(embedInFrame(fakeCrop(flat, p, 72, 60), 800, 600, 48, 48), C, C, 72.5);
+      const rr = (21.5 * 72) / 126;
+      for (let a = 0; a < 360; a += 0.5) {
+        const t = (a * Math.PI) / 180;
+        for (const [dr, rgb] of [[-1, [60, 155, 200]], [0, [200, 225, 240]], [1, [60, 155, 200]]] as const) {
+          const i = (Math.round(C + 6 + (rr + dr) * Math.sin(t)) * f.width + Math.round(C + 4 + (rr + dr) * Math.cos(t))) * 4;
+          f.data[i] = rgb[0];
+          f.data[i + 1] = rgb[1];
+          f.data[i + 2] = rgb[2];
+        }
+      }
+      return f;
+    };
+    const k = 60 / 72;
+    const refs = [
+      { id: "velho", kind: "nexus" as const, px: [400 + 4 * k, 400 + 6 * k] as [number, number] },
+      { id: "novo", kind: "nexus" as const, px: [777 + 4 * k, 210 + 6 * k] as [number, number] },
+    ];
+    const clock = { t: 0 };
+    const s = new TrackSession(() => flatReader, () => clock.t);
+    s.setRegion({ cx: C, cy: C, r: 72, shape: "circle" }, "circle");
+    s.setMap({ info, radiusPx: 60, refs });
+    s.findHere([400, 400]);
+    const r0 = await s.step(readOf(at([400, 400])), 800, 600);
+    expect(r0.fused?.layer).toBe("referências");
+    expect(Math.hypot(s.pos![0] - 400, s.pos![1] - 400)).toBeLessThan(3);
+    // teleportou pro outro Nexus, a mais de 400 px: o Nexus antigo ainda "casa" pela referência,
+    // mas a busca guiada confere pela imagem e pula pro novo
+    const far = at([777, 210]);
+    for (let i = 0; i < 3; i++) {
+      clock.t += 100;
+      await s.step(readOf(far), 800, 600);
+    }
+    expect(Math.hypot(s.pos![0] - 777, s.pos![1] - 210)).toBeLessThan(4);
+    expect(s.state).toBe("seguindo");
+  });
+
   it("anel fraco na região salva: pausa e não move a região (o minimapa é fixo)", async () => {
     const clock = { t: 0 };
     const s = new TrackSession(() => reader, () => clock.t);

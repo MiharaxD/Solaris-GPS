@@ -88,7 +88,10 @@
   avisa. Passam direto o teleporte confirmado pela busca guiada (ícone sob a seta), o Find me e
   a busca global repetida 3 vezes no mesmo lugar (sem ícone, ~6 s perdido). A busca guiada só
   passa direto com ícone sob a seta ou constelação; com 1 ícone longe, vale como global. Se a camada local
-  falha com ícone no centro, a busca guiada roda já no frame seguinte. Testado com sintéticos;
+  falha com ícone no centro, a busca guiada roda já no frame seguinte. Se a posição vem só da
+  referência (1 ícone, pela posição anterior) sem a imagem casar, a busca guiada confere a cada
+  2 s: sem isso, teleportar pra outro Nexus a mais de 400 px prendia o rastreio no Nexus antigo
+  (visto em Septimont). Testado com sintéticos;
   limiares ainda não conferidos com o jogo ao vivo.
 - Pausa sem minimapa (ticket 27): cada frame mede o anel da borda na região salva (folga de 6%
   do raio, ~6–10 ms). Pausa com 2 frames seguidos abaixo de 0,4 e volta com um acima de 0,5. Nos
