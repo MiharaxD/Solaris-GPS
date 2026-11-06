@@ -1,6 +1,6 @@
 # Estado atual
 
-**Fase:** Fase 3 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–21 e 23 feitos; 22 em parte. Fase 2 aprovada (🛑 24). Fase 3: tickets 25 e 26 feitos.
+**Fase:** Fase 3 em andamento. Fases 0 e 1 aprovadas (ticket 10 adiado). Tickets 17–21 e 23 feitos; 22 em parte. Fase 2 aprovada (🛑 24). Fase 3: tickets 25, 26 e 27 feitos.
 
 ## Pronto
 - `tools/build_tiles.py`: `inventory [--alpha]`, `manifest`, `pyramid` e `build` (gera
@@ -83,6 +83,14 @@
   passa direto com ícone sob a seta ou constelação; com 1 ícone longe, vale como global. Se a camada local
   falha com ícone no centro, a busca guiada roda já no frame seguinte. Testado com sintéticos;
   limiares ainda não conferidos com o jogo ao vivo.
+- Pausa sem minimapa (ticket 27): cada frame mede o anel da borda na região salva (folga de 6%
+  do raio, ~6–10 ms). Pausa com 2 frames seguidos abaixo de 0,4 e volta com um acima de 0,5. Nos
+  40 casos com minimapa o anel dá ≥ 0,67; em 232 telas sem ele simuladas a partir dos prints
+  (mundo no centro e à direita, canto embaçado, tiles no lugar, preto) dá ≤ 0,35. Um desfoque
+  leve (5% do raio) ainda deixa o anel em ~0,6. Pausado: seta azul apagada no mapa, aviso com o
+  tempo; a pausa não conta no "perdido" nem no alcance dos saltos. Com o anel fraco, re-detecta
+  o minimapa na tela a cada 1 s (~60 ms) e troca a região se achar um anel forte. Testado no
+  navegador com fonte simulada (menu 4 s → pausado, Worker 17%; volta → segue na hora).
 - Os prints foram anotados em cima de teleportes/Nexus. Em 204534, 204619 e 204748 a anotação
   ficou 15–34 px fora do teleporte, e o casamento aponta pro teleporte: o erro "contra a
   anotação" do runner inclui esse ruído.
@@ -120,14 +128,15 @@
   `_1`.
 
 ## Próximo (a frente)
-- Ticket 27 (pausar sem minimapa), depois 28 (auto-collect) e o 🛑 29. O item pendente do
+- Ticket 28 (auto-collect e atalhos), depois o 🛑 29. O item pendente do
   22 depende de direção anotada nos prints. O ticket 10 (afim por área) fica
   adiado: uma afim só fechou o Overworld com RMS de 3,5 px. Reavaliar se a ilha cinza grande
   à oeste, sem teleportes nos dados, destoar. Tickets 08, 15 e 17–30 foram
   reescritos pro tracker no navegador (pop-out em vez de Tauri, auto-collect, Find me).
 
 ## Depende do usuário
-- Prints que ainda ajudam: sem nenhum ícone à vista, interiores/cavernas (confirmar que a
+- Prints que ainda ajudam: telas sem minimapa (menu, inventário, mapa aberto, diálogo, cutscene)
+  pra conferir a pausa com o jogo real; sem nenhum ícone à vista, interiores/cavernas (confirmar que a
   escala não muda) e outros mapas. O `overworld-20261105-025949` é cópia do 025231 (pode
   apagar).
 - Pro ticket 22: anotar a direção da seta (campo "Direção" do painel Fixture) em alguns prints.

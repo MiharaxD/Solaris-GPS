@@ -36,12 +36,14 @@ export type ToWorker =
   | { type: "find"; mode: "here"; px: [number, number] }
   | { type: "grab" };
 
-export type TrackState = "sem-mapa" | "sem-escala" | "procurando" | "seguindo" | "perdido" | "esperando-clique";
+export type TrackState = "sem-mapa" | "sem-escala" | "pausado" | "procurando" | "seguindo" | "perdido" | "esperando-clique";
 
 export interface TrackStatus {
   state: TrackState;
   /** Última posição aceita, suavizada pra exibir (px do zoom máximo); continua valendo quando "perdido". */
   pos: [number, number] | null;
+  /** Há quanto tempo (ms) o rastreio está pausado sem minimapa; 0 fora da pausa. */
+  pausedFor: number;
   /** Frames processados por segundo (média móvel). */
   hz: number;
   /** Fração do tempo em que o Worker está processando (0–1): o custo de CPU do rastreio. */
@@ -66,6 +68,8 @@ export interface ResultMessage {
   /** Posição descartada como salto impossível (ticket 26). */
   rejected: { px: [number, number]; reason: string } | null;
   heading: Heading | null;
+  /** Anel do minimapa na região (ticket 27); null = não medido (sem região ou minimapa quadrado). */
+  presence: { score: number; visible: boolean } | null;
   timings: Record<string, number>;
   track: TrackStatus;
 }

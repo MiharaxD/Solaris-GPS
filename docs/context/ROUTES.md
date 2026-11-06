@@ -106,14 +106,18 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   por eixo; `JumpGate`: velocidade máxima e confirmação de salto; testes em `motion.test.ts`).
   A sessão guarda `pos` (medida aceita, usada na busca) e `display` (suavizada, vai no
   `track.pos`); salto descartado vem em `rejected`.
+- **Pausa sem minimapa (ticket 27):** `web/src/tracker/presence.ts` (`minimapPresence`: anel da
+  borda perto da região salva, via `ringNear` em `minimap.ts`; `PresenceGate`: histerese). A
+  sessão (`checkPresence`) pausa, re-detecta o minimapa na tela a cada 1 s com o anel fraco e, ao
+  voltar, desconta o tempo pausado dos relógios. Estado `pausado` + `pausedFor` no `track`.
 - **Heading (ticket 22):** `web/src/tracker/heading.ts` (`arrowHeading`: eixo de simetria da
   silhueta da seta, ponta pelo lado mais longo). Roda no Worker em todo frame com recorte.
 - **Testar:** `npm --prefix web test` (sintéticos em `minimap.test.ts`, `scale.test.ts` e
-  `locate.test.ts`, `globalSearch.test.ts`, `references.test.ts`, `heading.test.ts`, `fuse.test.ts`, `motion.test.ts` e `session.test.ts`, com as imagens de
+  `locate.test.ts`, `globalSearch.test.ts`, `references.test.ts`, `heading.test.ts`, `fuse.test.ts`, `motion.test.ts`, `presence.test.ts` e `session.test.ts`, com as imagens de
   `synthetic.ts`) e
   `npm --prefix web run fixtures` (runner sobre `tracker/fixtures/` e `tracker/samples/`;
   config em `web/vitest.fixtures.config.ts`; `SOLARIS_DUMP=<pasta>` grava os recortes; mede a
-  escala de cada print anotado e imprime a mediana; uma tabela por camada, todas com uma região
+  escala de cada print anotado e imprime a mediana; a tabela PRESENÇA simula telas sem minimapa; uma tabela por camada, todas com uma região
   do minimapa por resolução, como o ajuste salvo).
   Depuração visual: http://127.0.0.1:5173/lab.html.
 - **Cuidados:** o Vite não serve `tracker/` (fs restrito): no laboratório, abra o arquivo pelo

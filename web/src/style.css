@@ -738,6 +738,10 @@ body {
   color: #ff9f43;
 }
 
+.trk-hud[data-state="pausado"] {
+  color: #7fb3d5;
+}
+
 .trk-follow {
   width: 100%;
   margin-top: 6px;
@@ -844,6 +848,14 @@ body.lab {
 
 .trk-arrow[data-look="perdido"] path {
   fill: #8a99a4;
+}
+
+.trk-arrow[data-look="pausado"] {
+  opacity: 0.55;
+}
+
+.trk-arrow[data-look="pausado"] path {
+  fill: #7fb3d5;
 }
 
 .trk-arrow[data-look="palpite"] {

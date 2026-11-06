@@ -368,6 +368,13 @@ export class TrackerPanel {
       this.posInfo.textContent = `Sem escala do minimapa em ${this.info?.name ?? "?"}: meça no painel Fixture.`;
       return;
     }
+    if (t.state === "pausado") {
+      if (t.pos) this.playerView.show(t.pos, this.lastDeg, "pausado");
+      const sec = Math.floor(t.pausedFor / 1000);
+      this.posInfo.textContent =
+        `Minimapa fora da tela (menu, mapa aberto ou cutscene): pausado${sec >= 1 ? ` há ${sec} s` : ""}. Retomo sozinho quando ele voltar.`;
+      return;
+    }
     if (f) {
       const look: PlayerLook = f.confidence;
       this.playerView.show(t.pos ?? f.px, this.lastDeg, look);

@@ -10,7 +10,8 @@ import { detectIcons, type DetectedIcon } from "./icons";
 import { ImageLocator } from "./imageLocator";
 import { DEFAULT_MASK } from "./locate";
 import { DEFAULT_JUMP, JumpGate, MotionFilter, type JumpOptions } from "./motion";
-import type { MinimapRegion, MinimapShape } from "./minimap";
+import { detectMinimap, searchCorner, type MinimapRegion, type MinimapShape } from "./minimap";
+import { DEFAULT_PRESENCE, minimapPresence, PresenceGate, type PresenceOptions } from "./presence";
 import { processFrame, type ReadRect } from "./pipeline";
 import type { LocatedResult, MapConfig, ResultMessage, TrackState } from "./protocol";
 import { locateByRefs, type RefFix } from "./references";
@@ -33,6 +34,13 @@ export interface SessionOptions {
   jump: JumpOptions;
   /** Erro esperado da medição por confiança (px), pro filtro. */
   sigma: Record<Confidence, number>;
+  /** Presença do minimapa (ticket 27): ver `PresenceGate`. */
+  presence: PresenceOptions;
+  /**
+   * Com o anel fraco na região (pausado ou quase), procura o minimapa na tela toda a cada tanto
+   * (ms; ~60 ms cada): a região salva pode ter ficado fora (resolução, HUD mexido).
+   */
+  redetectEvery: number;
 }
 
 export const DEFAULT_SESSION: SessionOptions = {
@@ -43,6 +51,8 @@ export const DEFAULT_SESSION: SessionOptions = {
   firmFor: 300,
   jump: DEFAULT_JUMP,
   sigma: { alta: 2, média: 4, baixa: 8 },
+  presence: DEFAULT_PRESENCE,
+  redetectEvery: 1000,
 };
 
 /** Parte do resultado que a sessão calcula (o Worker põe o recorte e as medições). */
@@ -66,6 +76,10 @@ export class TrackSession {
   private readonly filter = new MotionFilter();
   /** Posição suavizada pra exibir. */
   display: [number, number] | null = null;
+  private readonly presence: PresenceGate;
+  /** Início da pausa sem minimapa (null = rodando). */
+  private pausedAt: number | null = null;
+  private lastRedetect = -Infinity;
 
   constructor(
     private readonly readerFor: (map: MapConfig) => TileReader,
@@ -73,6 +87,12 @@ export class TrackSession {
     private readonly opt: SessionOptions = DEFAULT_SESSION,
   ) {
     this.gate = new JumpGate(opt.jump);
+    this.presence = new PresenceGate(opt.presence);
+  }
+
+  /** Há quanto tempo está pausado (ms); 0 = rodando. */
+  get pausedFor(): number {
+    return this.pausedAt === null ? 0 : this.now() - this.pausedAt;
   }
 
   setRegion(region: MinimapRegion | null, shape: MinimapShape): void {
@@ -122,6 +142,7 @@ export class TrackSession {
     if (!this.map) return "sem-mapa";
     if (!this.map.radiusPx) return "sem-escala";
     if (this.hold) return "esperando-clique";
+    if (this.pausedAt !== null) return "pausado";
     if (!this.pos) return "procurando";
     return this.now() - this.lastOk > this.opt.lostAfter ? "perdido" : "seguindo";
   }
@@ -145,11 +166,13 @@ export class TrackSession {
       fused: null,
       rejected: null,
       heading: null,
+      presence: null,
       timings,
     };
     const crop = res.crop;
     const r = res.region?.r;
     if (!crop || !r || crop.width === 0) return out;
+    if (!this.checkPresence(read, frameW, frameH, out)) return out;
 
     let t = this.now();
     const heading: Heading | null = arrowHeading(crop, r);
@@ -209,5 +232,53 @@ export class TrackSession {
     }
     out.fused = fused;
     return out;
+  }
+
+  /**
+   * Presença do minimapa (ticket 27): pausa quando o anel some e retoma de onde parou. A pausa
+   * não conta como tempo andando: o relógio do "perdido", o da busca global e o alcance dos
+   * saltos continuam de onde estavam (num menu o jogador não anda; um teleporte pelo mapa
+   * aberto é pego pela busca guiada, com o ícone sob a seta). Devolve se pode seguir o frame.
+   */
+  private checkPresence(read: ReadRect, frameW: number, frameH: number, out: StepResult): boolean {
+    const region = this.region;
+    if (!region || region.shape !== "circle") return true;
+    let t = this.now();
+    const p = minimapPresence(read, frameW, frameH, region, this.opt.presence);
+    out.timings.presence = this.now() - t;
+    let score = p.score;
+    let moved = false;
+    // anel fraco: talvez a região tenha saído do lugar; procura na tela toda de vez em quando
+    if (score < this.opt.presence.present && t - this.lastRedetect >= this.opt.redetectEvery) {
+      this.lastRedetect = t;
+      const c = searchCorner(frameW, frameH);
+      const d = detectMinimap(read(0, 0, c.w, c.h), frameW, frameH, this.shape);
+      out.timings.redetect = this.now() - t;
+      if (d && d.score >= this.opt.presence.present && d.score > score + 0.1) {
+        this.region = { ...d.region, shape: this.shape };
+        out.detection = d;
+        score = d.score;
+        moved = true;
+      }
+    }
+    const visible = this.presence.update(score);
+    out.presence = { score, visible };
+    // o recorte deste frame veio da região velha: o rastreio segue no próximo
+    if (moved) return false;
+    t = this.now();
+    if (!visible) {
+      this.pausedAt ??= t;
+      return false;
+    }
+    if (this.pausedAt !== null) {
+      const d = t - this.pausedAt;
+      this.pausedAt = null;
+      this.lastOk = Math.min(t, this.lastOk + d);
+      this.lastGlobal = Math.min(t, this.lastGlobal + d);
+      // a velocidade de antes da pausa não vale mais
+      const p0 = this.display ?? this.pos;
+      if (p0) this.filter.reset(p0, t);
+    }
+    return true;
   }
 }

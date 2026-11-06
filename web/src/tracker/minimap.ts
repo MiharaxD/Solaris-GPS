@@ -57,8 +57,8 @@ function sobel(g: Gray): Grad {
  * Fração de pontos do círculo onde o gradiente é forte e aponta na direção radial (pra dentro
  * ou pra fora). Robusto ao conteúdo do minimapa, que não forma um círculo.
  */
-function ringScore(gr: Grad, cx: number, cy: number, r: number, thr: number): number {
-  const n = Math.max(32, Math.round(2 * Math.PI * r));
+function ringScore(gr: Grad, cx: number, cy: number, r: number, thr: number, points?: number): number {
+  const n = points ?? Math.max(32, Math.round(2 * Math.PI * r));
   let hits = 0;
   let total = 0;
   for (let k = 0; k < n; k++) {
@@ -169,6 +169,50 @@ export function detectMinimap(corner: Rgba, frameW: number, frameH: number, shap
     if (!best || bs > best.score) best = { region: { cx: bx, cy: by, r: br, shape }, score: bs };
   }
   return best;
+}
+
+/**
+ * Anel do minimapa perto de uma região já conhecida (presença, ticket 27). `patch` é o recorte
+ * do frame a partir de (`ox`, `oy`) que cobre a região mais `slack` px de folga. Se o anel já
+ * passa de `enough` na região, para aí (o caso comum); senão testa centros até `slack` px
+ * fora e raios ±2 com o anel amostrado (passo 2) e refina o melhor com passo 1. ~6–10 ms a
+ * 1440p, contra ~60 do `detectMinimap`: roda em todo frame.
+ */
+export function ringNear(patch: Rgba, ox: number, oy: number, reg: MinimapRegion, slack: number, enough = 1): Detection {
+  const gr = sobel(toGray(patch, 1));
+  const thr = Math.max(8, percentile(gr.mag, 0.9));
+  const x0 = reg.cx - ox;
+  const y0 = reg.cy - oy;
+  let bx = x0;
+  let by = y0;
+  let br = reg.r;
+  let bs = ringScore(gr, bx, by, br, thr);
+  const done = (): Detection => ({ region: { cx: bx + ox, cy: by + oy, r: br, shape: reg.shape }, score: bs });
+  if (bs >= enough) return done();
+  let cs = -1;
+  for (let dy = -slack; dy <= slack; dy += 2) {
+    for (let dx = -slack; dx <= slack; dx += 2) {
+      for (const dr of [-2, 0, 2]) {
+        const s = ringScore(gr, x0 + dx, y0 + dy, reg.r + dr, thr, 96);
+        if (s > cs) [cs, bx, by, br] = [s, x0 + dx, y0 + dy, reg.r + dr];
+      }
+    }
+  }
+  bs = ringScore(gr, bx, by, br, thr);
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (const [dx, dy, dr] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as const) {
+      const [nx, ny, nr] = [bx + dx, by + dy, br + dr];
+      if (Math.abs(nx - x0) > slack || Math.abs(ny - y0) > slack || Math.abs(nr - reg.r) > slack) continue;
+      const s = ringScore(gr, nx, ny, nr, thr);
+      if (s > bs) {
+        [bs, bx, by, br] = [s, nx, ny, nr];
+        improved = true;
+      }
+    }
+  }
+  return done();
 }
 
 /** Tamanho do canto do frame que a detecção precisa ler. */

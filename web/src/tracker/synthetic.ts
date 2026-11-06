@@ -68,3 +68,18 @@ export function pyramid(map: Gray, maxZoom: number, minZoom: number, ts: number)
     return { width: ts, height: ts, data } satisfies Rgba;
   };
 }
+
+/** Pinta o anel claro da borda do minimapa (o sinal de presença, ticket 27) num frame, suavizado como o real. */
+export function withRing(frame: Rgba, cx: number, cy: number, r: number, v = 215): Rgba {
+  const data = new Uint8ClampedArray(frame.data);
+  for (let y = Math.max(0, Math.floor(cy - r - 3)); y <= Math.min(frame.height - 1, Math.ceil(cy + r + 3)); y++) {
+    for (let x = Math.max(0, Math.floor(cx - r - 3)); x <= Math.min(frame.width - 1, Math.ceil(cx + r + 3)); x++) {
+      const a = Math.max(0, 1 - Math.abs(Math.hypot(x - cx, y - cy) - r) / 2);
+      if (a === 0) continue;
+      const i = (y * frame.width + x) * 4;
+      for (let k = 0; k < 3; k++) data[i + k] = data[i + k]! * (1 - a) + v * a;
+      data[i + 3] = 255;
+    }
+  }
+  return { width: frame.width, height: frame.height, data };
+}

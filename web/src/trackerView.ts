@@ -1,7 +1,7 @@
 /**
  * Jogador no mapa (ticket 25): seta girada pela direção, cor pela confiança, cinza quando o
- * rastreio está perdido e tracejada quando é só um palpite. "Seguir" centraliza o mapa a cada
- * posição; arrastar o mapa desliga.
+ * rastreio está perdido, apagada quando pausado sem minimapa e tracejada quando é só um palpite.
+ * "Seguir" centraliza o mapa a cada posição; arrastar o mapa desliga.
  */
 import L from "leaflet";
 import type { MapView } from "./mapView";
@@ -10,7 +10,7 @@ import type { Confidence } from "./tracker/fuse";
 
 const FOLLOW_PREF = "tracker.follow";
 
-export type PlayerLook = Confidence | "perdido" | "palpite";
+export type PlayerLook = Confidence | "perdido" | "pausado" | "palpite";
 
 export class TrackerView {
   private readonly arrow = document.createElement("div");

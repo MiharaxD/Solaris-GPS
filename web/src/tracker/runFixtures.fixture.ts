@@ -27,6 +27,7 @@ import { angleDiff, arrowHeading } from "./heading";
 import { DEFAULT_MASK, detectCone, type Located } from "./locate";
 import { median, sweepScale, sweepWindow, type SweepOptions } from "./scale";
 import { grayWindow, type TileReader } from "./tiles";
+import { DEFAULT_PRESENCE, minimapPresence } from "./presence";
 
 const repo = path.resolve(__dirname, "../../..");
 const fixturesDir = path.join(repo, "tracker/fixtures");
@@ -131,6 +132,47 @@ const row = (cells: [string, number][]) => cells.map(([t, n]) => pad(t, n)).join
 /** Até onde (px do zoom máximo) conta como acerto no resumo; a anotação tem ruído de até ~34 px. */
 const OK_PX = 40;
 
+/** Desfoque de caixa (raio `k`) em RGBA: fundo embaçado dos menus. */
+function boxBlur(img: Rgba, k: number): Rgba {
+  const { width: w, height: h } = img;
+  const pass = (src: Uint8ClampedArray, dx: number, dy: number): Uint8ClampedArray => {
+    const out = new Uint8ClampedArray(src.length);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const acc = [0, 0, 0];
+        let n = 0;
+        for (let t = -k; t <= k; t++) {
+          const xx = x + t * dx;
+          const yy = y + t * dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          const i = (yy * w + xx) * 4;
+          acc[0]! += src[i]!;
+          acc[1]! += src[i + 1]!;
+          acc[2]! += src[i + 2]!;
+          n++;
+        }
+        const o = (y * w + x) * 4;
+        out[o] = acc[0]! / n;
+        out[o + 1] = acc[1]! / n;
+        out[o + 2] = acc[2]! / n;
+        out[o + 3] = 255;
+      }
+    }
+    return out;
+  };
+  return { width: w, height: h, data: pass(pass(img.data, 1, 0), 0, 1) };
+}
+
+/** Gray das tiles → RGBA (o "mapa aberto" no lugar do minimapa). */
+function grayToRgba(g: { width: number; height: number; data: Float32Array }): Rgba {
+  const data = new Uint8ClampedArray(g.width * g.height * 4);
+  for (let i = 0; i < g.width * g.height; i++) {
+    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = g.data[i]!;
+    data[i * 4 + 3] = 255;
+  }
+  return { width: g.width, height: g.height, data };
+}
+
 /** Posições anteriores simuladas pra camada imagem (deslocamento da anotação, px do zoom máximo). */
 const PREV: [number, number][] = [[0, 0], [100, 0], [0, -100], [-70, 70]];
 
@@ -158,6 +200,11 @@ it("roda todos os fixtures", async () => {
   const gl: string[] = [
     row([["caso", 44], ["res", 10], ["erro px", 8], ["NCC", 5], ["margem", 7], ["pico", 8], ["certo?", 7], ["geral", 6], ["meio", 6], ["fim", 6], ["total", 6], ["carga ms", 9]]),
   ];
+  const pres: string[] = [
+    row([["caso", 44], ["res", 10], ["à vista", 8], ["ms", 5], ["desloc. 15", 10], ["centro", 7], ["direita", 8], ["embaçado", 9], ["mapa", 6], ["mapa ½", 7], ["preto", 6]]),
+  ];
+  const presPos: number[] = [];
+  const presNeg: number[] = [];
   const img: string[] = [
     row([["caso", 44], ["res", 10], ["erro px", 8], ["espalh.", 8], ["NCC", 5], ["margem", 7], ["ms", 6], ["janela ms", 9]]),
   ];
@@ -200,6 +247,39 @@ it("roda todos os fixtures", async () => {
       const res_ = `${frame.width}×${frame.height}`;
       const region = stable.get(`${frame.width}x${frame.height}`) ?? detected;
       const res = processFrame(read, frame.width, frame.height, { region, detect: false, shape: "circle" });
+      // presença (ticket 27): o anel na região salva contra telas sem minimapa simuladas
+      if (region) {
+        const W = frame.width;
+        const H = frame.height;
+        const tp = performance.now();
+        const on = minimapPresence(read, W, H, region).score;
+        const pms = performance.now() - tp;
+        presPos.push(on);
+        const at = (cx: number, cy: number, rd: ReadRect = read) => minimapPresence(rd, W, H, { ...region, cx, cy }).score;
+        const shifted = at(region.cx, region.cy + 15);
+        const neg: (number | null)[] = [at(W / 2, H / 2), at(W * 0.78, H * 0.35)];
+        neg.push(at(region.cx, region.cy, (x, y, w, h) => boxBlur(subImage(frame, x, y, w, h), Math.max(2, Math.round(region.r * 0.1)))));
+        const pinfo = c.map ? infos.get(c.map) : undefined;
+        if (pinfo && c.px) {
+          let tr = readers.get(pinfo.name);
+          if (!tr) readers.set(pinfo.name, (tr = nodeTileReader(pinfo)));
+          for (const z of [pinfo.maxZoom, pinfo.maxZoom - 1]) {
+            const k = Math.pow(2, pinfo.maxZoom - z);
+            const size = Math.ceil(region.r * 2 + 40);
+            const g = grayToRgba(await grayWindow(tr, pinfo, Math.round(c.px[0] / k - size / 2), Math.round(c.px[1] / k - size / 2), size, size, z));
+            const ox = Math.round(region.cx - size / 2);
+            const oy = Math.round(region.cy - size / 2);
+            neg.push(at(region.cx, region.cy, (x, y, w, h) => subImage(g, x - ox, y - oy, w, h)));
+          }
+        } else neg.push(null, null);
+        neg.push(at(region.cx, region.cy, (_x, _y, w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4).fill(0) })));
+        for (const v of neg) if (v !== null) presNeg.push(v);
+        const f = (v: number | null) => (v === null ? "—" : v.toFixed(2));
+        pres.push(row([
+          [c.name, 44], [res_, 10], [f(on), 8], [pms.toFixed(1), 5], [f(shifted), 10],
+          [f(neg[0]!), 7], [f(neg[1]!), 8], [f(neg[2]!), 9], [f(neg[3]!), 6], [f(neg[4]!), 7], [f(neg[5]!), 6],
+        ]));
+      }
       if (res.crop && res.region) {
         // heading (ticket 22): seta; o cone (câmera) só como conferência, já que parado ele aponta pra frente
         const th = performance.now();
@@ -330,6 +410,13 @@ it("roda todos os fixtures", async () => {
       ...det,
       `As camadas abaixo usam uma região por resolução (mediana das detecções, como o ajuste salvo): ` +
         [...stable].map(([k, r]) => `${k} → ${r.cx}, ${r.cy}, r ${r.r}`).join("; "),
+      "",
+      `PRESENÇA (ticket 27; score do anel na região salva com ${Math.round(DEFAULT_PRESENCE.slack * 100)}% do raio de folga; à vista ≥ ${DEFAULT_PRESENCE.present},`,
+      `ausente < ${DEFAULT_PRESENCE.absent}. Sem minimapa, simulado: a região no centro e à direita da tela (mundo/cutscene), o canto`,
+      "embaçado em 10% do raio (menu), as tiles no lugar (mapa aberto, zoom máximo e metade) e preto (carregando); desloc. 15 = região 15 px abaixo)",
+      ...pres,
+      `à vista: ${presPos.filter((v) => v >= DEFAULT_PRESENCE.present).length}/${presPos.length} (pior ${Math.min(...presPos).toFixed(2)}); ` +
+        `sem minimapa: ${presNeg.filter((v) => v < DEFAULT_PRESENCE.absent).length}/${presNeg.length} ausentes (pior ${Math.max(...presNeg).toFixed(2)})`,
       "",
       "ESCALA (ticket 18; raio do minimapa em px do zoom máximo)",
       ...scale,
