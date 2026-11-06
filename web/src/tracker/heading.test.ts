@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import type { Rgba } from "./image";
 import { angleDiff, arrowHeading } from "./heading";
 
-/** Recorte 252×252 com a seta (triângulo com entalhe atrás) apontando pra `deg` (0 = norte, horário). */
-function arrowCrop(deg: number): Rgba {
+/**
+ * Recorte 252×252 com a seta (triângulo com entalhe atrás) apontando pra `deg` (0 = norte,
+ * horário), sobre o fundo `bg`. Contorno amarelo e face clara dentro, como no jogo.
+ */
+function arrowCrop(deg: number, bg: [number, number, number] = [40, 60, 70]): Rgba {
   const W = 252;
   const c = (W - 1) / 2;
   const data = new Uint8ClampedArray(W * W * 4);
-  for (let i = 0; i < W * W; i++) data.set([40, 60, 70, 255], i * 4);
+  for (let i = 0; i < W * W; i++) data.set([...bg, 255], i * 4);
   // seta "pra cima" em coordenadas locais: ponta (0,-27), cantos (±18, 21), entalhe (0, 10)
   const tip: [number, number] = [0, -27];
   const left: [number, number] = [-18, 21];
@@ -29,10 +32,9 @@ function arrowCrop(deg: number): Rgba {
       const lx = dx * Math.cos(t) + dy * Math.sin(t);
       const ly = -dx * Math.sin(t) + dy * Math.cos(t);
       const p: [number, number] = [lx, ly];
-      if (inTri(p, tip, left, notch) || inTri(p, tip, notch, right)) {
-        // metade clara, metade amarela (como no jogo)
-        data.set(lx < 0 ? [250, 245, 220, 255] : [240, 200, 50, 255], (y * W + x) * 4);
-      }
+      const inArrow = (q: [number, number]) => inTri(q, tip, left, notch) || inTri(q, tip, notch, right);
+      // face clara = a seta encolhida (70%) em volta de (0, 2); o resto da seta é o contorno
+      if (inArrow(p)) data.set(inArrow([lx / 0.7, (ly - 2) / 0.7 + 2]) ? [250, 245, 220, 255] : [240, 200, 50, 255], (y * W + x) * 4);
     }
   }
   return { width: W, height: W, data };
@@ -45,6 +47,26 @@ describe("arrowHeading", () => {
       expect(h).not.toBeNull();
       expect(angleDiff(h.deg, deg)).toBeLessThan(2);
       expect(h.symmetry).toBeGreaterThan(0.9);
+    }
+  });
+
+  it("o cone de visão sobre terreno claro não puxa a direção", () => {
+    // areia clara (como em Jinzhou) e um cone de 60° que clareia o chão a partir da seta
+    for (const deg of [0, 90, 225]) {
+      for (const cone of [45, 135, 180, 270]) {
+        const crop = arrowCrop(deg, [196, 178, 140]);
+        const c = (crop.width - 1) / 2;
+        for (let y = 0; y < crop.width; y++) {
+          for (let x = 0; x < crop.width; x++) {
+            const i = (y * crop.width + x) * 4;
+            const a = ((Math.atan2(y - c, x - c) * 180) / Math.PI + 90 + 360) % 360;
+            if (angleDiff(a, cone) > 30 || crop.data[i + 2] !== 140) continue; // a seta fica por cima
+            for (let k = 0; k < 3; k++) crop.data[i + k] = crop.data[i + k]! * 0.6 + 255 * 0.4;
+          }
+        }
+        const h = arrowHeading(crop, 126)!;
+        expect(angleDiff(h.deg, deg)).toBeLessThan(2);
+      }
     }
   });
 

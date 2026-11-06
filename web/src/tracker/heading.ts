@@ -1,7 +1,7 @@
 /**
  * Direção do jogador pela seta no centro do minimapa (ticket 22). A seta é um triângulo com
  * um entalhe atrás, simétrico pelo eixo ponta→costas: acha o eixo de maior simetria da
- * silhueta (amarelo + face clara) e a ponta pelo lado que vai mais longe do centróide (nos
+ * silhueta (contorno amarelo + face clara que ele cerca) e a ponta pelo lado que vai mais longe do centróide (nos
  * prints: ~27 px na frente contra ~21 atrás a 1440p). O cone de visão é da câmera e não entra.
  * Código puro: roda no Worker e no runner.
  */
@@ -16,28 +16,70 @@ export interface Heading {
   ratio: number;
 }
 
-/** Silhueta da seta: amarelo e branco-amarelado (não azulado) perto do centro. */
+/**
+ * Silhueta da seta: o contorno amarelo saturado + o que ele cerca (a face clara). Não basta
+ * "amarelo ou claro": em terreno claro (areia, prédios) e sob o cone de visão da câmera, que
+ * clareia o chão a partir da seta, o terreno passava no filtro e a silhueta virava seta + cone,
+ * e a direção ia junto com a câmera. O terreno clareado perde saturação, o contorno não.
+ */
 function arrowPixels(crop: Rgba, within: number): { xs: Float64Array; ys: Float64Array; grid: Uint8Array } {
   const W = crop.width;
   const H = crop.height;
   const c = (W - 1) / 2;
   const lim = within * (W / 2);
-  const grid = new Uint8Array(W * H);
-  const xs: number[] = [];
-  const ys: number[] = [];
+  const x0 = Math.max(0, Math.floor(c - lim));
+  const y0 = Math.max(0, Math.floor(c - lim));
+  const x1 = Math.min(W - 1, Math.ceil(c + lim));
+  const y1 = Math.min(H - 1, Math.ceil(c + lim));
+  const ww = x1 - x0 + 1;
+  const hh = y1 - y0 + 1;
   const d = crop.data;
-  for (let y = Math.max(0, Math.floor(c - lim)); y <= Math.min(H - 1, Math.ceil(c + lim)); y++) {
-    for (let x = Math.max(0, Math.floor(c - lim)); x <= Math.min(W - 1, Math.ceil(c + lim)); x++) {
-      if (Math.hypot(x - c, y - c) > lim) continue;
-      const i = (y * W + x) * 4;
+  // 1 = amarelo do contorno; 2 = fora (alcança a borda da janela sem cruzar o amarelo)
+  const lab = new Uint8Array(ww * hh);
+  for (let y = 0; y < hh; y++) {
+    for (let x = 0; x < ww; x++) {
+      const i = ((y + y0) * W + x + x0) * 4;
       const R = d[i]!;
       const G = d[i + 1]!;
       const B = d[i + 2]!;
-      if (d[i + 3] !== 0 && R >= 170 && G >= 140 && R >= B + 15) {
-        grid[y * W + x] = 1;
-        xs.push(x);
-        ys.push(y);
-      }
+      if (d[i + 3] !== 0 && R >= 180 && G >= 140 && B <= 0.62 * R && R - B >= 90) lab[y * ww + x] = 1;
+    }
+  }
+  const stack: number[] = [];
+  const push = (k: number) => {
+    if (lab[k] === 0) {
+      lab[k] = 2;
+      stack.push(k);
+    }
+  };
+  for (let x = 0; x < ww; x++) {
+    push(x);
+    push((hh - 1) * ww + x);
+  }
+  for (let y = 0; y < hh; y++) {
+    push(y * ww);
+    push(y * ww + ww - 1);
+  }
+  while (stack.length) {
+    const k = stack.pop()!;
+    const x = k % ww;
+    if (x > 0) push(k - 1);
+    if (x < ww - 1) push(k + 1);
+    if (k >= ww) push(k - ww);
+    if (k < (hh - 1) * ww) push(k + ww);
+  }
+  const grid = new Uint8Array(W * H);
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let y = 0; y < hh; y++) {
+    for (let x = 0; x < ww; x++) {
+      if (lab[y * ww + x] === 2) continue;
+      const X = x + x0;
+      const Y = y + y0;
+      if (Math.hypot(X - c, Y - c) > lim) continue;
+      grid[Y * W + X] = 1;
+      xs.push(X);
+      ys.push(Y);
     }
   }
   return { xs: Float64Array.from(xs), ys: Float64Array.from(ys), grid };
