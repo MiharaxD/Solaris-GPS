@@ -4,7 +4,7 @@
  * o leitor de tiles e o relógio vêm de fora pra dar pra testar.
  */
 import { DEFAULT_FUSE, fuseGlobal, fuseLocal, guidedCandidates, iconAtCenter, type Confidence, type Fused } from "./fuse";
-import { GlobalLocator } from "./globalSearch";
+import { GlobalLocator, type Rect } from "./globalSearch";
 import { arrowHeading, type Heading } from "./heading";
 import { detectIcons, type DetectedIcon } from "./icons";
 import { ImageLocator } from "./imageLocator";
@@ -61,6 +61,8 @@ export class TrackSession {
   private global: GlobalLocator | null = null;
   pos: [number, number] | null = null;
   private wantGlobal = false;
+  /** Região escolhida no web: limita a busca no mapa inteiro (a guiada por ícones não). */
+  private area: Rect | null = null;
   private hold = false;
   private lastOk = 0;
   private lastGlobal = -Infinity;
@@ -112,6 +114,10 @@ export class TrackSession {
       }
     }
     this.map = map;
+  }
+
+  setArea(area: Rect | null): void {
+    this.area = area;
   }
 
   findGlobal(): void {
@@ -198,7 +204,7 @@ export class TrackSession {
       this.lastGlobal = t;
       const guide = guidedCandidates(icons, radiusPx / r, r, map.refs);
       const guided = guide.candidates.length ? await this.global.locate(crop, r, radiusPx, guide.candidates) : null;
-      const G = !guided || guided.score < DEFAULT_FUSE.minGuided ? await this.global.locate(crop, r, radiusPx) : null;
+      const G = !guided || guided.score < DEFAULT_FUSE.minGuided ? await this.global.locate(crop, r, radiusPx, undefined, this.area) : null;
       const best = guided ?? G;
       located = best && { ...best, mode: "global" };
       fused = fuseGlobal(G, guided);

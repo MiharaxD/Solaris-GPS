@@ -5,6 +5,7 @@
  */
 import type { MapInfo } from "../maps";
 import type { Fused } from "./fuse";
+import type { Rect } from "./globalSearch";
 import type { Heading } from "./heading";
 import type { CameraView } from "./locate";
 import type { DetectedIcon } from "./icons";
@@ -35,7 +36,9 @@ export type ToWorker =
   /** global = procurar no mapa inteiro; here = Find me (clique); hold = esperando o clique. */
   | { type: "find"; mode: "global" | "hold" }
   | { type: "find"; mode: "here"; px: [number, number] }
-  | { type: "grab" };
+  | { type: "grab" }
+  /** Região escolhida (só a busca no mapa inteiro respeita); null = mapa todo. */
+  | { type: "area"; area: Rect | null };
 
 export type TrackState = "sem-mapa" | "sem-escala" | "pausado" | "procurando" | "seguindo" | "perdido" | "esperando-clique";
 

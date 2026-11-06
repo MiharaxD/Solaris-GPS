@@ -28,6 +28,14 @@ export interface GlobalOptions {
   minScore: number;
 }
 
+/** Retângulo em px do zoom máximo (x0,y0 inclusivos; x1,y1 exclusivos). */
+export interface Rect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 export const DEFAULT_GLOBAL: GlobalOptions = { candidates: 40, minLand: 0.1, minTemplate: 12, minMargin: 0.08, minScore: 0.5 };
 
 interface Overview {
@@ -70,8 +78,15 @@ export class GlobalLocator {
   /**
    * Sem `among`, procura no mapa inteiro. Com `among` (posições candidatas em px do zoom máximo,
    * ex.: teleportes do tipo do ícone no centro logo após o TP), só confere esses pontos.
+   * `area` (região escolhida pelo usuário) limita a busca no mapa inteiro aos centros dentro dela.
    */
-  async locate(crop: Rgba, r: number, radiusPx: number, among?: readonly [number, number][]): Promise<GlobalResult | null> {
+  async locate(
+    crop: Rgba,
+    r: number,
+    radiusPx: number,
+    among?: readonly [number, number][],
+    area?: Rect | null,
+  ): Promise<GlobalResult | null> {
     const timings: Record<string, number> = {};
     let t0 = performance.now();
     const ov = await this.getOverview(this.zoomFor(radiusPx));
@@ -108,12 +123,17 @@ export class GlobalLocator {
       peaks = peaks.sort((a, b) => b.v - a.v).slice(0, this.opt.candidates);
     } else {
       const grid = new Float32Array(Math.max(0, gw * gh)).fill(-2);
-      const area = fw * fw;
+      const tplArea = fw * fw;
       const L = ov.land;
-      for (let y = 0; y < gh; y++) {
-        for (let x = 0; x < gw; x++) {
+      // região: só as posições cujo centro cai dentro dela (em px da visão geral)
+      const ax0 = area ? Math.floor(area.x0 / ov.F - ov.x0 - fw / 2) : 0;
+      const ay0 = area ? Math.floor(area.y0 / ov.F - ov.y0 - fw / 2) : 0;
+      const ax1 = area ? Math.ceil(area.x1 / ov.F - ov.x0 - fw / 2) : gw;
+      const ay1 = area ? Math.ceil(area.y1 / ov.F - ov.y0 - fw / 2) : gh;
+      for (let y = Math.max(0, ay0); y < Math.min(gh, ay1); y++) {
+        for (let x = Math.max(0, ax0); x < Math.min(gw, ax1); x++) {
           const land = L[(y + fw) * (W + 1) + x + fw]! - L[y * (W + 1) + x + fw]! - L[(y + fw) * (W + 1) + x]! + L[y * (W + 1) + x]!;
-          if (land < this.opt.minLand * area) continue;
+          if (land < this.opt.minLand * tplArea) continue;
           grid[y * gw + x] = nccAt(ov.planes, t, off, x, y, 0);
         }
       }

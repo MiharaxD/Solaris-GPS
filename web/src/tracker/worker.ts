@@ -156,5 +156,8 @@ scope.onmessage = (ev: MessageEvent<ToWorker>) => {
     case "grab":
       wantGrab = true;
       break;
+    case "area":
+      session.setArea(msg.area);
+      break;
   }
 };
