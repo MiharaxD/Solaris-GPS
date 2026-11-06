@@ -32,3 +32,7 @@ tracker/fixtures/
 # Referências derivadas do WutheringData (© Kuro Games) — geradas localmente
 web/public/refs/
 web/public/markers/
+
+# Overlays subterrâneos do th.gl (© Kuro Games): HTML salvo, imagens e posições
+assets/overlays/
+web/public/overlays/

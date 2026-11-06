@@ -894,3 +894,28 @@ body.lab {
   stroke-dasharray: 4 3;
 }
 
+
+/* ---- Modo subterrâneo ---- */
+.ug-on .leaflet-tile-pane {
+  filter: brightness(0.4) saturate(0.5);
+}
+
+.ug-label {
+  display: none;
+  width: max-content !important;
+  height: auto !important;
+  margin: 0 !important;
+  translate: -50% -50%;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(8, 20, 30, 0.7);
+  color: var(--panel-fg);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+}
+
+.ug-labels .ug-label {
+  display: block;
+}

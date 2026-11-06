@@ -2,3 +2,4 @@
 #   .venv/Scripts/python -m pip install -r tools/requirements.txt
 pillow
 numpy
+requests

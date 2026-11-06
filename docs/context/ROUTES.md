@@ -24,6 +24,17 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   downloader: ignore. No Overworld, z6 tem linhas 0–63 e colunas 1–62.
 - **Não precisa ler:** `assets/mapas/*.png` (gigantes, só referência visual).
 
+## Subterrâneo (overlays do th.gl)
+- **Ir direto para:** `tools/wuwa_overlays.py` (lê o `tilesConfig` do HTML salvo do th.gl em
+  `assets/overlays/mundo_aberto.html`, baixa as imagens pra `assets/overlays/cache/` e grava
+  `assets/overlays/overlays.json` com o retângulo em pixel do zoom máximo; só rodar com pedido),
+  `tools/build_overlays.py` (copia pra `web/public/overlays/<name>/` + `<name>.json` com `rect` e
+  `center`) e `web/src/underground.ts` (`UndergroundLayer`: botão "Subterrâneo", escurece as
+  tiles e desenha as imagens num pane entre tiles e marcadores; rótulos a partir de maxZoom−2).
+- **Cuidados:** hoje só o Overworld tem overlays (30). As imagens são RGBA esparsas e várias se
+  sobrepõem (andares). `footprints` do `overlays.json` ainda não são usados. O tracker ignora o
+  subterrâneo.
+
 ## Download de tiles (só com pedido)
 - **Ir direto para:** `tools/wuwa_maps.py` (~240 linhas). `write_manifest` define o formato do
   manifest; `TileClient.path` define o nome dos arquivos.
@@ -162,6 +173,7 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 | `.scratch/wuwa-tracker/issues/NN-*.md` | Tickets com bloqueadores e critérios |
 | `tools/wuwa_maps.py` | Downloader e costurador do CDN do th.gl (não mexer) |
 | `tools/build_tiles.py` | Inventário, manifest, pirâmide, build do web e slice |
+| `tools/build_overlays.py` | Overlays subterrâneos → `web/public/overlays/` |
 | `web/src/mapView.ts` | Leaflet e conversão pixel↔latlng |
 | `web/server/mapDataPlugin.ts` | API local `/api/map-data` |
 | `config.json` | Padrões: caminhos, tela, minimapa |

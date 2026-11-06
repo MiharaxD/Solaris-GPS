@@ -14,6 +14,8 @@
   honami-city, dimmr-plains, simulacrum-nexus-mengzhou e chronorift-metropolis (1 Nexus) não
   têm referências suficientes. Não precisam de calibração pro tracker (que trabalha em pixel);
   ela só faria falta pra importar coordenadas de jogo.
+- Modo subterrâneo no web (botão "Subterrâneo", Overworld: 30 áreas do th.gl alinhadas por
+  pixel; `tools/wuwa_overlays.py` + `tools/build_overlays.py`).
 - `tools/extract_refs.py` → `web/public/refs/` (7 mapas; os outros 3 não têm dados).
 - Marcadores (ticket 11): `tools/extract_markers.py` → `web/public/markers/`. Overworld: 175
   teleportes, 33 Nexus, 2380 baús, 238 caskets, 10205 plantas, 2593 minérios e 2751 outros

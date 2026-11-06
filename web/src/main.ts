@@ -10,8 +10,10 @@ import { FixturePanel } from "./fixturePanel";
 import { TrackerPanel } from "./trackerPanel";
 import { MarkerPanel } from "./markerPanel";
 import { ProgressStore } from "./progress";
+import { UndergroundLayer } from "./underground";
 
 const ACTIVE_MAP_PREF = "activeMap";
+const UNDERGROUND_PREF = "underground";
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -43,6 +45,7 @@ async function start(): Promise<void> {
   calibration.onData = (map, data) => markers.setMapData(map, data);
   document.body.append(calibration.root, fixtures.root, tracker.root, tracker.preview, markers.root);
   const toolbar = el<HTMLDivElement>("toolbar");
+  const underground = new UndergroundLayer(view);
 
   let picker: HTMLSelectElement | null = null;
   const activate = (name: string): void => {
@@ -59,6 +62,7 @@ async function start(): Promise<void> {
     void markers.setMap(info);
     fixtures.setMap(info);
     void tracker.setMap(info);
+    void underground.setMap(info);
   };
 
   picker = createMapPicker(toolbar, maps, initial.name, activate);
@@ -72,6 +76,22 @@ async function start(): Promise<void> {
     markersBtn.setAttribute("aria-pressed", String(markers.isOpen));
   });
   toolbar.append(markersBtn);
+  const ugBtn = document.createElement("button");
+  ugBtn.type = "button";
+  ugBtn.className = "tool-btn";
+  ugBtn.textContent = "Subterrâneo";
+  ugBtn.title = "Mostrar as cavernas e áreas subterrâneas por cima do mapa";
+  ugBtn.hidden = true;
+  ugBtn.setAttribute("aria-pressed", "false");
+  ugBtn.addEventListener("click", () => {
+    underground.toggle();
+    ugBtn.setAttribute("aria-pressed", String(underground.isOn));
+    savePref(UNDERGROUND_PREF, underground.isOn ? "1" : "0");
+  });
+  underground.onAvailability = (available) => (ugBtn.hidden = !available);
+  underground.toggle(loadPref(UNDERGROUND_PREF) === "1");
+  ugBtn.setAttribute("aria-pressed", String(underground.isOn));
+  toolbar.append(ugBtn);
   const calibBtn = document.createElement("button");
   calibBtn.type = "button";
   calibBtn.className = "tool-btn";
@@ -136,6 +156,7 @@ async function start(): Promise<void> {
     progress,
     fixtures,
     tracker,
+    underground,
     mapData: { load: loadMapData, save: saveMapData, download: downloadMapData },
   };
 }
