@@ -8,7 +8,7 @@
 export type MarkerIcon = "beacon" | "nexus" | "chest" | "casket" | "plant" | "ore" | "collectible" | "personal" | "dot";
 
 /** Glifos de sistema (barra de ferramentas): traço único, cor do texto atual. */
-export type UiIcon = "markers" | "layers" | "crosshair" | "camera" | "radar" | "logo" | "close" | "search";
+export type UiIcon = "markers" | "layers" | "crosshair" | "camera" | "radar" | "logo" | "close" | "search" | "chevron";
 
 const INK = "#EDEFF2";
 const CYAN = "#3FD3F2";
@@ -95,6 +95,7 @@ const UI: Record<UiIcon, string> = {
   logo: `<path d="M12 2.8l8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="M8.2 12.6c1.3-1.8 2.5-1.8 3.8 0s2.5 1.8 3.8 0" /><path d="M12 6.8v2.4"/>`,
   close: `<path d="M6.5 6.5l11 11 M17.5 6.5l-11 11"/>`,
   search: `<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>`,
+  chevron: `<path d="M7 10l5 5 5-5"/>`,
 };
 
 /** SVG inline de um glifo de sistema (currentColor, traço 1,6 px). */

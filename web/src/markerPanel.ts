@@ -6,6 +6,7 @@ import {
   CATEGORIES,
   MAP_FILE_CATS,
   category,
+  fold,
   loadMarkers,
   makeVisibility,
   markerColor,
@@ -95,6 +96,8 @@ export class MarkerPanel {
   private hideFound = loadPref(HIDE_FOUND_PREF) === "1";
   /** Grupos de subcategoria abertos (sobrevivem ao redesenho do painel). */
   private openGroups = new Set<string>();
+  /** Texto do filtro de tipos de cada menu (sobrevive ao redesenho). */
+  private readonly subQuery = new Map<string, string>();
   private maps: MapInfo[] = [];
   private readonly layer: MarkerCanvasLayer<GameMarker>;
 
@@ -534,63 +537,102 @@ export class MarkerPanel {
     const counts = tallyMarkers(this.markers, this.foundHere(), this.ignored).cats;
     const hiddenCats = new Set(this.filter.hiddenCats);
     const hiddenSubs = new Set(this.filter.hiddenSubs);
+    // o redesenho não pode perder a rolagem nem a busca do menu aberto
+    const scroll = this.cats.querySelector<HTMLElement>(".mk-subs")?.scrollTop ?? 0;
     const rows: HTMLElement[] = [];
     for (const c of CATEGORIES) {
       const ct = counts.get(c.id);
       if (!ct) continue;
       const subs = ct.subs;
-      const box = h("input", { type: "checkbox", checked: !hiddenCats.has(c.id) });
+      const catHidden = hiddenCats.has(c.id);
+      const box = h("input", { type: "checkbox", checked: !catHidden });
+      box.setAttribute("aria-label", `Mostrar ${c.label}`);
       box.addEventListener("change", () =>
         this.setFilter({ ...this.filter, hiddenCats: this.toggleIn(this.filter.hiddenCats, c.id, !box.checked) }),
       );
-      const head = h(
-        "label",
-        { className: "mk-cat" },
-        box,
-        swatch(c.icon, c.color),
-        h("span", { className: "mk-name", textContent: c.label }),
-        h("span", { className: "mk-count", textContent: fmtTally(ct.tally) }),
-      );
-      head.title = `${percent(ct.tally)} encontrados`;
-      if (subs.size < 2) {
-        rows.push(head);
+      const name = h("span", { className: "mk-name", textContent: c.label });
+      const count = h("span", { className: "mk-count", textContent: fmtTally(ct.tally) });
+      const hasMenu = subs.size >= 2;
+      const boxLabel = h("label", { className: "mk-cat-box" }, box, swatch(c.icon, c.color));
+      const row = h("div", { className: "mk-cat" }, boxLabel);
+      row.title = `${percent(ct.tally)} encontrados`;
+      if (!hasMenu) {
+        // sem tipos: a linha inteira liga e desliga
+        boxLabel.classList.add("wide");
+        boxLabel.append(name, count);
+        rows.push(row);
         continue;
       }
       // subcategorias (tier do baú, espécie da planta…), mais numerosas primeiro
-      const list = h("div", { className: "mk-subs" });
       const sorted = [...subs.entries()].sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0]));
+      const keys = sorted.map(([sub]) => `${c.id}/${sub}`);
+      const shown = keys.filter((k) => !hiddenSubs.has(k)).length;
+      const open = this.openGroups.has(c.id);
+      const tag = h("span", { className: "mk-filter-tag", textContent: shown < keys.length ? `${shown}/${keys.length} tipos` : "" });
+      const opener = h("button", { type: "button", className: "mk-cat-open" }, name, tag, count, uiIcon("chevron", 14));
+      opener.setAttribute("aria-expanded", String(open));
+      opener.title = `Escolher os tipos de ${c.label.toLowerCase()}`;
+      opener.addEventListener("click", () => {
+        // um menu aberto por vez
+        if (this.openGroups.has(c.id)) this.openGroups.clear();
+        else this.openGroups = new Set([c.id]);
+        this.renderCats();
+      });
+      row.append(opener);
+      row.classList.toggle("open", open);
+      rows.push(row);
+      if (!open) continue;
+
+      const drop = h("div", { className: "mk-drop" });
+      const showOnly = (keep: string[]) =>
+        this.setFilter({
+          hiddenCats: this.toggleIn(this.filter.hiddenCats, c.id, false),
+          hiddenSubs: [...new Set([...this.filter.hiddenSubs.filter((k) => !keys.includes(k)), ...keys.filter((k) => !keep.includes(k))])].sort(),
+        });
+      const all = h("button", { type: "button", className: "mk-link", textContent: "todos" });
+      const none = h("button", { type: "button", className: "mk-link", textContent: "nenhum" });
+      all.addEventListener("click", () => showOnly(keys));
+      none.addEventListener("click", () => showOnly([]));
+      const list = h("div", { className: "mk-subs" });
+      const query = h("input", { type: "search", placeholder: `Filtrar ${sorted.length} tipos…`, value: this.subQuery.get(c.id) ?? "" });
+      const applyQuery = () => {
+        const q = fold(query.value.trim());
+        this.subQuery.set(c.id, query.value);
+        for (const el of list.children) (el as HTMLElement).hidden = !!q && !fold(el.textContent ?? "").includes(q);
+      };
+      query.addEventListener("input", applyQuery);
       for (const [sub, n] of sorted) {
         const key = `${c.id}/${sub}`;
-        const sb = h("input", { type: "checkbox", checked: !hiddenSubs.has(key), disabled: hiddenCats.has(c.id) });
+        const on = !hiddenSubs.has(key);
+        const sb = h("input", { type: "checkbox", checked: on });
         sb.addEventListener("change", () =>
-          this.setFilter({ ...this.filter, hiddenSubs: this.toggleIn(this.filter.hiddenSubs, key, !sb.checked) }),
+          this.setFilter({
+            // ligar um tipo de categoria escondida mostra a categoria também
+            hiddenCats: sb.checked ? this.toggleIn(this.filter.hiddenCats, c.id, false) : this.filter.hiddenCats,
+            hiddenSubs: this.toggleIn(this.filter.hiddenSubs, key, !sb.checked),
+          }),
         );
+        const only = h("button", { type: "button", className: "mk-only", textContent: "só" });
+        only.title = "Mostrar só este tipo";
+        only.addEventListener("click", () => showOnly([key]));
+        const color = c.subs?.[sub]?.color;
         list.append(
           h(
-            "label",
+            "div",
             { className: "mk-sub" },
-            sb,
-            h("span", { className: "mk-name", textContent: subLabel({ cat: c.id, sub }) }),
+            h("label", {}, sb, color ? swatch(c.icon, color) : "", h("span", { className: "mk-name", textContent: subLabel({ cat: c.id, sub }) })),
+            only,
             h("span", { className: "mk-count", textContent: fmtTally(n) }),
           ),
         );
       }
-      const all = h("button", { type: "button", className: "mk-link", textContent: "todos" });
-      const none = h("button", { type: "button", className: "mk-link", textContent: "nenhum" });
-      const keys = sorted.map(([sub]) => `${c.id}/${sub}`);
-      all.addEventListener("click", () =>
-        this.setFilter({ ...this.filter, hiddenSubs: this.filter.hiddenSubs.filter((k) => !keys.includes(k)) }),
-      );
-      none.addEventListener("click", () =>
-        this.setFilter({ ...this.filter, hiddenSubs: [...new Set([...this.filter.hiddenSubs, ...keys])].sort() }),
-      );
-      const details = h("details", { className: "mk-group", open: this.openGroups.has(c.id) },
-        h("summary", {}, head), h("div", { className: "mk-sub-actions" }, all, none), list);
-      details.addEventListener("toggle", () => {
-        if (details.open) this.openGroups.add(c.id);
-        else this.openGroups.delete(c.id);
-      });
-      rows.push(details);
+      if (catHidden) drop.append(h("p", { className: "mk-drop-note", textContent: "Categoria desligada: marcar um tipo liga ela de novo." }));
+      drop.append(h("div", { className: "mk-sub-actions" }, all, none, h("span", { className: "mk-drop-sum", textContent: `${shown} de ${keys.length}` })));
+      if (sorted.length > 8) drop.append(h("label", { className: "mk-search mk-drop-search" }, uiIcon("search", 14), query));
+      drop.append(list);
+      rows.push(drop);
+      applyQuery();
+      requestAnimationFrame(() => (list.scrollTop = scroll));
     }
     this.cats.replaceChildren(...rows);
   }

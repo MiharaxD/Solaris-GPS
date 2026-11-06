@@ -20,7 +20,8 @@
 - Marcadores (ticket 11): `tools/extract_markers.py` → `web/public/markers/`. Overworld: 175
   teleportes, 33 Nexus, 2380 baús, 238 caskets, 10205 plantas, 2593 minérios e 2751 outros
   coletáveis. Painel "Marcadores" com filtro por categoria/subcategoria (salvo no
-  localStorage), busca sem acento e popup. Plantas, minérios e coletáveis começam desligados.
+  localStorage; cada categoria com tipos abre um menu suspenso com busca, todos/nenhum e "só"),
+  busca sem acento e popup. Plantas, minérios e coletáveis começam desligados.
   A contagem de baús inclui os que só aparecem após puzzle/desafio ("玩法刷新", "程序封锁").
 - Progresso (ticket 12): encontrados no IndexedDB do navegador (popup ou botão direito),
   contagem x/y por categoria, por mapa e de todos os mapas, "Esconder encontrados" e
