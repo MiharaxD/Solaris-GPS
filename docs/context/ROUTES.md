@@ -23,6 +23,10 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   puro. Pastas de zoom acima do `max_zoom` que só têm arquivos de 0 bytes são sondagem do
   downloader: ignore. No Overworld, z6 tem linhas 0–63 e colunas 1–62.
 - **Não precisa ler:** `assets/mapas/*.png` (gigantes, só referência visual).
+- **Rombo Jinzhou–Mengzhou:** `tools/fill_overworld_gap.py --write` cobre o vão do Overworld (z6 linhas
+  24–37, colunas 16–25, e as z5 correspondentes) com uma ponte de terra; guarda os originais em
+  `assets/tiles_cache_backup/overworld_gap/` e é idempotente. Depois rode `build_tiles.py build`.
+  Se o cache for rebaixado do CDN, rode de novo (apague o backup antes).
 
 ## Subterrâneo (overlays do th.gl)
 - **Ir direto para:** `tools/wuwa_overlays.py` (lê o `tilesConfig` do HTML salvo do th.gl em
