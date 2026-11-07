@@ -17,7 +17,7 @@ Como a base deles funciona:
 
 Saída (gitignored, derivada de dados de terceiros): web/public/appsample.json
     {"source": "appsample", "built": "...", "maps": {"<mid>": {...diagnóstico}},
-     "ids": {"<id do appsample>": ["<nosso mapa>", "<nosso id>", <distância em m>]}}
+     "ids": {"<id do appsample>": ["<nosso mapa>", "<nosso id>", <distância em m>, [<variantes>]?]}}
 
 Uso:
     .venv/Scripts/python tools/build_appsample.py --download   # baixa a base (rede, só com pedido)
@@ -68,6 +68,10 @@ FIT_TOL = 150_000.0     # 15 m: tolerância pra contar inlier no ajuste (unidade
 TYPE_TOL = 100_000.0    # 10 m: raio usado pra descobrir a categoria de cada tipo
 MATCH_TOL = 500_000.0   # 50 m: raio máximo do casamento final (o appsample erra a posição em
                         # dezenas de metros às vezes; os pares mais próximos casam primeiro)
+LEFTOVER_TOL = 1_500_000.0  # 150 m: última fase, só com as sobras dos dois lados
+VARIANT_XY = 30_000.0   # 3 m: nossos marcadores a essa distância (e VARIANT_Z na altura) são
+VARIANT_Z = 30_000.0    # variantes do mesmo objeto
+VARIANT_CATS = {"chest"}  # plantas e minérios vizinhos são itens diferentes
 MIN_TYPE_RATE = 0.5     # fração de um tipo que precisa casar pra ele valer
 MIN_TYPE_SHARE = 0.7    # fração da categoria majoritária entre os casados
 MIN_FIT_RATE = 0.4      # fração dos teleportes e baús que precisa casar pro ajuste valer
@@ -283,37 +287,84 @@ def type_categories(placed: list[tuple[dict[str, Any], str, np.ndarray]],
     return out
 
 
+def variant_groups(ms: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Junta os nossos marcadores que são variantes do mesmo objeto: mesma categoria, a menos de
+    VARIANT_XY no plano e VARIANT_Z na altura (ex.: baú básico/padrão/avançado de um desafio, só um
+    aparece no jogo). O appsample tem um marcador só pra esse grupo."""
+    if not ms:
+        return []
+    xy = np.array([[m["x"], m["y"]] for m in ms], float)
+    parent = list(range(len(ms)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i, j in cKDTree(xy).query_pairs(VARIANT_XY):
+        if abs(float(ms[i].get("z", 0)) - float(ms[j].get("z", 0))) <= VARIANT_Z:
+            parent[find(i)] = find(j)
+    groups: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for i, m in enumerate(ms):
+        groups[find(i)].append(m)
+    return list(groups.values())
+
+
 def match_all(placed: list[tuple[dict[str, Any], str, np.ndarray]], cats: dict[str, str],
-              ours: dict[str, list[dict[str, Any]]]) -> dict[str, list[str | float]]:
-    """Casamento um pra um, do par mais próximo pro mais distante, só na mesma categoria."""
-    by_key: dict[tuple[str, str], tuple[cKDTree, list[dict[str, Any]]]] = {}
+              ours: dict[str, list[dict[str, Any]]]) -> dict[str, list[Any]]:
+    """Casamento um pra um entre marcadores deles e grupos de variantes nossos, do par mais
+    próximo pro mais distante, só na mesma categoria.
+
+    Fases, cada uma só com o que sobrou das anteriores:
+    1. tipos de nome conhecido (FIXED_TYPES) até MATCH_TOL;
+    2. os mesmos até LEFTOVER_TOL: o appsample às vezes põe o baú no começo do desafio, dezenas de
+       metros longe de onde ele aparece;
+    3. tipos deduzidos pela vizinhança até MATCH_TOL (antes deles, o z10 de Huanglong, colado
+       nos baús, roubava os pares dos baús de verdade).
+    Saída: id deles → [mapa, id nosso, distância em m, (ids das outras variantes)].
+    """
+    by_key: dict[tuple[str, str], tuple[cKDTree, list[list[dict[str, Any]]]]] = {}
     for name, ms in ours.items():
-        groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        by_cat: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for m in ms:
-            groups[m["cat"]].append(m)
-        for cat, g in groups.items():
-            by_key[(name, cat)] = (cKDTree(np.array([[m["x"], m["y"]] for m in g], float)), g)
-    pairs: list[tuple[float, str, str, str]] = []
-    for row, name, xy in placed:
-        cat = cats.get(row["type"])
-        entry = by_key.get((name, cat)) if cat else None
-        if not entry:
-            continue
-        tree, g = entry
-        ds, js = tree.query(xy, k=min(5, len(g)), distance_upper_bound=MATCH_TOL)
-        for d, j in zip(np.atleast_1d(ds), np.atleast_1d(js)):
-            if np.isfinite(d):
-                pairs.append((float(d), row["id"], name, g[int(j)]["id"]))
-    pairs.sort()
+            by_cat[m["cat"]].append(m)
+        for cat, g in by_cat.items():
+            groups = variant_groups(g) if cat in VARIANT_CATS else [[m] for m in g]
+            centers = np.array([[np.mean([m["x"] for m in gr]), np.mean([m["y"] for m in gr])] for gr in groups])
+            by_key[(name, cat)] = (cKDTree(centers), groups)
+
     used_a: set[str] = set()
-    used_b: set[tuple[str, str]] = set()
-    out: dict[str, list[str | float]] = {}
-    for d, aid, name, bid in pairs:
-        if aid in used_a or (name, bid) in used_b:
-            continue
-        used_a.add(aid)
-        used_b.add((name, bid))
-        out[aid] = [name, bid, round(d / 10_000, 1)]  # distância em metros
+    used_b: set[tuple[str, str, int]] = set()
+    out: dict[str, list[Any]] = {}
+    phases = [(0, MATCH_TOL), (0, LEFTOVER_TOL), (1, MATCH_TOL)]
+    for want, tol in phases:
+        pairs: list[tuple[float, str, str, str, int]] = []
+        for row, name, xy in placed:
+            if row["id"] in used_a:
+                continue
+            cat = cats.get(row["type"])
+            if (0 if row["type"] in FIXED_TYPES else 1) != want or not cat:
+                continue
+            entry = by_key.get((name, cat))
+            if not entry:
+                continue
+            tree, groups = entry
+            ds, js = tree.query(xy, k=min(8, len(groups)), distance_upper_bound=tol)
+            for d, j in zip(np.atleast_1d(ds), np.atleast_1d(js)):
+                if np.isfinite(d) and (name, cat, int(j)) not in used_b:
+                    pairs.append((float(d), row["id"], name, cat, int(j)))
+        pairs.sort()
+        for d, aid, name, cat, j in pairs:
+            if aid in used_a or (name, cat, j) in used_b:
+                continue
+            used_a.add(aid)
+            used_b.add((name, cat, j))
+            group = by_key[(name, cat)][1][j]
+            entry_out: list[Any] = [name, group[0]["id"], round(d / 10_000, 1)]  # distância em metros
+            if len(group) > 1:
+                entry_out.append([m["id"] for m in group[1:]])
+            out[aid] = entry_out
     return out
 
 

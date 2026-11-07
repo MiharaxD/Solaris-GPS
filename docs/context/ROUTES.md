@@ -101,6 +101,9 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   `resolveIds`; testes em `appsampleImport.test.ts`) e `web/src/appsampleDialog.ts` (prévia por
   mapa, aplica em todos). Botão nas Configurações; `openAppsampleImport` no `markerPanel.ts`.
   Cuidado: os nomes dos tipos (`z1`...) e a chave da cifra vêm do bundle do site deles.
+  Casamento (`match_all`): baús nossos a ≤3 m viram um grupo de variantes (um id deles marca
+  todos); fases: tipos conhecidos até 50 m, os mesmos até 150 m só nas sobras, depois os tipos
+  deduzidos (o `z10` de Huanglong não pode passar na frente dos baús).
 - **Fixtures (ticket 15):** `web/src/fixturePanel.ts` (UI e formato `FixtureAnnotation`) e
   `web/server/fixturesPlugin.ts` (`/api/fixtures`, grava em `fixturesDir` do `config.json`,
   padrão `tracker/fixtures/`; testes em `fixturesPlugin.test.ts`).

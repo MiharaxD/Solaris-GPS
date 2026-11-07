@@ -33,8 +33,12 @@ export const APPSAMPLE_SNIPPET = `(async () => {
 
 export interface AppsampleTable {
   built: string;
-  /** id do appsample → [nosso mapa, nosso id, distância em metros]. */
-  ids: Record<string, [string, string, number]>;
+  /**
+   * id do appsample → [nosso mapa, nosso id, distância em metros, ids das outras variantes].
+   * Variantes: baús nossos no mesmo lugar (básico/padrão/avançado de um desafio), que o appsample
+   * conta como um só; marcar um marca todos.
+   */
+  ids: Record<string, [string, string, number, string[]?]>;
 }
 
 export interface ParsedIds {
@@ -94,14 +98,14 @@ export function resolveIds(ids: readonly string[], table: AppsampleTable, maxDis
       missing.push(source);
       continue;
     }
-    const [map, id, dist] = hit;
+    const [map, id, dist, variants] = hit;
     if (dist > maxDist) {
       tooFar++;
       continue;
     }
     let list = byMap.get(map);
     if (!list) byMap.set(map, (list = []));
-    list.push({ map, id, dist, source });
+    for (const v of [id, ...(variants ?? [])]) list.push({ map, id: v, dist, source });
   }
   return { byMap, missing, tooFar };
 }

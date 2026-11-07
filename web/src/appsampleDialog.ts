@@ -38,7 +38,7 @@ interface MapRow {
 export class AppsampleDialog {
   private readonly dialog = h("dialog", { className: "imp-dialog" });
   private readonly text = h("textarea", { rows: 3, placeholder: '["37794", "37796", …]' });
-  private readonly maxDist = h("input", { type: "number", value: "50", min: "1", max: "50", step: "1" });
+  private readonly maxDist = h("input", { type: "number", value: "150", min: "1", max: "150", step: "1" });
   private readonly summary = h("p", { className: "imp-summary", role: "status" } as Partial<HTMLParagraphElement>);
   private readonly list = h("ul", { className: "imp-list" });
   private readonly unmatched = h("details", { className: "imp-unmatched" });
@@ -135,7 +135,7 @@ export class AppsampleDialog {
         "Falta a tabela do appsample. Gere com: .venv/Scripts/python tools/build_appsample.py --download";
       return;
     }
-    const max = Math.min(50, Math.max(1, this.maxDist.valueAsNumber || 50));
+    const max = Math.min(150, Math.max(1, this.maxDist.valueAsNumber || 150));
     const r = resolveIds(parsed.ids, this.table, max);
     await this.render(ctx, parsed.ids.length, parsed.invalid, r, run);
   }
@@ -181,7 +181,7 @@ export class AppsampleDialog {
       );
     });
     this.summary.textContent =
-      `${total} ids (${invalid.length} inválidos). Casaram ${matched} (${already} já encontrados); ` +
+      `${total} ids (${invalid.length} inválidos). Casaram ${matched} marcadores nossos, contando as variantes de baú (${already} já encontrados); ` +
       `sem correspondência ${r.missing.length}` +
       (r.tooFar ? `; ${r.tooFar} cortados pela distância` : "") +
       ".";
