@@ -30,8 +30,14 @@
 - Marcadores manuais (ticket 13): teleporte/Nexus em `data/maps` (`manualMarkers`, px), os
   outros no IndexedDB e no backup. Nos 3 mapas sem dados (honami, dimmr, mengzhou), os
   teleportes do tracker vão ter de ser cadastrados assim.
-- Importador do th.gl (ticket 14): testado só com dados sintéticos. A escala real do backup
-  do th.gl ainda não foi vista (o importador detecta cm/m e eixos trocados).
+- Importador do th.gl (ticket 14): o backup real usa cm (×100 = unidade do jogo) e ids que são
+  os `EntityId` do jogo (`e<id>` nos nossos). Ainda casa só por posição no mapa ativo.
+- Importador do appsample (Config. → "Importar appsample…"): script de console no site deles →
+  arquivo de ids → tabela local `web/public/appsample.json` (`tools/build_appsample.py`) →
+  marca em todos os mapas. Com o backup real do usuário: 1483 de 1847 casam, e 1204 dos 1221
+  que o th.gl importou do mesmo progresso batem. Ficam de fora: os Sonance Caskets do
+  Huanglong (o `extract_markers.py` não gera nenhum casket perto deles), Mengzhou e Dimmr
+  Plains (sem marcadores nossos) e o Vault (sem teleportes e com poucos baús pra ajustar).
 - Modo anotar fixture (ticket 15): botão "Fixture" grava print + anotação em
   `tracker/fixtures/` pela API local `/api/fixtures`. A captura da tela compartilhada fica
   pro ticket 17.

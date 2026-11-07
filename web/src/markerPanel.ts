@@ -23,6 +23,7 @@ import { loadMapData } from "./mapData";
 import { mapLabel } from "./mapPicker";
 import { computeRegions, type Region } from "./regions";
 import { ImportDialog } from "./importDialog";
+import { AppsampleDialog } from "./appsampleDialog";
 import { parseBackup, percent, tallyMarkers, type ManualMarker, type ProgressStore, type Tally } from "./progress";
 import type { MapView } from "./mapView";
 import { loadPref, savePref } from "./storage";
@@ -105,6 +106,7 @@ export class MarkerPanel {
   private mapManual: ManualMarker[] = [];
   private mode: ClickMode = null;
   private importer: ImportDialog | null = null;
+  private appsampleImporter: AppsampleDialog | null = null;
   private texts: string[] = [];
   private placed = new Map<string, PlacedItem<GameMarker>>();
   private transform: Affine | null = null;
@@ -505,6 +507,15 @@ export class MarkerPanel {
       apply: (ids) => this.progress.setFoundMany(info.name, ids, true),
     });
     return null;
+  }
+
+  /** Importador do progresso do appsample: marca em todos os mapas de uma vez. */
+  openAppsampleImport(): void {
+    this.appsampleImporter ??= new AppsampleDialog();
+    this.appsampleImporter.open({
+      isFound: (map, id) => this.progress.isFound(map, id),
+      apply: (map, ids) => this.progress.setFoundMany(map, ids, true),
+    });
   }
 
   downloadBackup(): void {

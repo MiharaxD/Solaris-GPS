@@ -91,6 +91,12 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   decide o que vai pro arquivo do mapa.
 - **Importador do th.gl (ticket 14):** `web/src/thglImport.ts` (parser e casamento; testes em
   `thglImport.test.ts`) e `web/src/importDialog.ts` (diálogo de prévia).
+- **Importador do appsample:** `tools/build_appsample.py` (base em
+  `assets/appsample/markers_all.v3.json`, `--download` baixa; grava `web/public/appsample.json`,
+  ignorado pelo git; ~1 min), `web/src/appsampleImport.ts` (script do console, parser,
+  `resolveIds`; testes em `appsampleImport.test.ts`) e `web/src/appsampleDialog.ts` (prévia por
+  mapa, aplica em todos). Botão nas Configurações; `openAppsampleImport` no `markerPanel.ts`.
+  Cuidado: os nomes dos tipos (`z1`...) e a chave da cifra vêm do bundle do site deles.
 - **Fixtures (ticket 15):** `web/src/fixturePanel.ts` (UI e formato `FixtureAnnotation`) e
   `web/server/fixturesPlugin.ts` (`/api/fixtures`, grava em `fixturesDir` do `config.json`,
   padrão `tracker/fixtures/`; testes em `fixturesPlugin.test.ts`).
@@ -200,6 +206,7 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 | `config.json` | Padrões: caminhos, tela, minimapa |
 | `tools/extract_refs.py` | Teleportes/Nexus do WutheringData → `web/public/refs/` |
 | `tools/extract_markers.py` | Marcadores por categoria → `web/public/markers/` |
+| `tools/build_appsample.py` | Tabela appsample → nossos ids → `web/public/appsample.json` |
 | `web/src/markerPanel.ts` | Painel de marcadores (filtro, busca, popup) |
 | `web/src/calibration.ts` | Painel de calibração jogo→pixel |
 | `assets/tiles_cache/*/manifest.json` | Metadados de cada mapa (zooms, limites) |

@@ -103,12 +103,21 @@
   importa pro mapa ativo (o arquivo não diz o mapa) e descobre sozinho a escala (cm/m) e a
   ordem dos eixos pelo maior número de casamentos.
 
+- **O importador do appsample usa uma tabela gerada offline**, não casamento no navegador:
+  o export deles só tem ids. `tools/build_appsample.py` decifra `lng`/`lat` da base deles
+  (troca de dígitos com a chave do bundle), ajusta por mapa deles (`mid`) x = s·lng + bx,
+  y = −s·lat + by usando teleportes e baús, e casa um pra um na mesma categoria até 50 m (o
+  appsample erra a posição em dezenas de metros às vezes). Correção local e afim completa não
+  melhoraram. Por quê: nada é baixado em runtime, e a prévia mostra a distância de cada par.
+  Exige: rodar de novo com `--download` quando o appsample atualizar a base (`code` novo na
+  cifra → atualizar `CODES`).
+
+- **Unidade do jogo nos marcadores: 10 000 por metro** (Beacons vizinhos a ~220 m). Raios e
+  distâncias mostrados em metros dividem por isso.
+
 - **O mapa ativo é escolhido à mão no web.** Detecção automática de mapa fica fora até o
   usuário pedir. A recuperação manual é o "Find me": clicar onde está pra recomeçar o
   rastreio.
-
-- **Não copiar código nem dados de outros sites de mapa** (Teyvat GPS, th.gl, appsample).
-  Pode-se usar a descrição pública de como eles funcionam como referência de produto.
 
 - **Visual no código do dossiê do WuWa, com assets próprios**: neutros escuros e frios; cor
   saturada só com significado (raridade dos baús em cinza→verde→azul→roxo→ouro, famílias de

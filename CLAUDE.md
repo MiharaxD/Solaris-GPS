@@ -20,6 +20,8 @@ o `py -3.12` não funciona (o 3.12 foi instalado pelo uv e não está registrado
   `npm --prefix web run typecheck`, `npm --prefix web test` (Vitest) e
   `npm --prefix web run fixtures` (runner do tracker sobre os prints locais).
 - Tiles do web: `.venv/Scripts/python tools/build_tiles.py build`.
+- Tabela do importador do appsample: `.venv/Scripts/python tools/build_appsample.py`
+  (`--download` baixa a base deles de novo; só com pedido).
 
 **Só com pedido explícito do usuário:**
 - `python tools/wuwa_maps.py --cache assets/tiles_cache --out assets/mapas ...` baixa do CDN

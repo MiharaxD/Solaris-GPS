@@ -103,6 +103,12 @@ export class SettingsDialog {
       if (warn) this.status.textContent = warn;
       else this.root.close();
     });
+    const impApp = h("button", { type: "button", className: "mk-btn", textContent: "Importar appsample…" });
+    impApp.title = "Marca encontrados a partir do progresso do mapa do appsample (todos os mapas)";
+    impApp.addEventListener("click", () => {
+      this.markers.openAppsampleImport();
+      this.root.close();
+    });
 
     const checks = HIDE_GROUPS.map((g) => {
       const box = h("input", { type: "checkbox", checked: this.markers.isHidingFound(g.id) });
@@ -114,7 +120,7 @@ export class SettingsDialog {
       h("section", { className: "set-section" },
         h("h3", { textContent: "Progresso" }),
         h("p", { className: "set-help", textContent: "O progresso fica só neste navegador. Faça backup de vez em quando." }),
-        h("div", { className: "mk-actions" }, backup, restore, imp, file)),
+        h("div", { className: "mk-actions" }, backup, restore, imp, impApp, file)),
       h("section", { className: "set-section" },
         h("h3", { textContent: "Esconder do mapa" }),
         h("p", { className: "set-help", textContent: "Os encontrados somem em vez de ficar apagados. Desligado, continuam no mapa, mais claros." }),

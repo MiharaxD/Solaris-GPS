@@ -36,3 +36,7 @@ web/public/markers/
 # Overlays subterrâneos do th.gl (© Kuro Games): HTML salvo, imagens e posições
 assets/overlays/
 web/public/overlays/
+
+# Base do appsample (assets/appsample/) e a tabela gerada por tools/build_appsample.py
+assets/
+web/public/appsample.json
