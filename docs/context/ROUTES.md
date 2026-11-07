@@ -20,7 +20,8 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Testar:** `.venv/Scripts/python tools/build_tiles.py inventory` (sai com 1 se algum
   manifest divergir do disco).
 - **Cuidados:** as tiles são RGB, sem alpha. O fundo azul vem pintado e há padding preto
-  puro. Pastas de zoom acima do `max_zoom` que só têm arquivos de 0 bytes são sondagem do
+  puro na borda externa (Overworld, Fabricatorium, Lahai-Roi). O `build` pinta essa faixa com a
+  cor do mar de cada mapa (`_clear_edge_padding`, só nas tiles da borda); o cache fica intacto. Pastas de zoom acima do `max_zoom` que só têm arquivos de 0 bytes são sondagem do
   downloader: ignore. No Overworld, z6 tem linhas 0–63 e colunas 1–62.
 - **Não precisa ler:** `assets/mapas/*.png` (gigantes, só referência visual).
 - **Rombo Jinzhou–Mengzhou:** `tools/fill_overworld_gap.py --write` transforma os cortes retos

@@ -286,6 +286,95 @@ def _shifted_parent(map_dir: Path, hi: int, r: int, c: int, dr: int, dc: int,
 
 
 MIN_GRID_TILES = 2  # zoom mínimo: o mapa inteiro cabe em ~2x2 tiles (1024 px)
+# Cor do mar/fundo pintada nas tiles do Overworld (igual ao MAP_BG do web e ao --map-bg do CSS).
+# Outros mapas têm o próprio tom: `_sea_color` mede.
+MAP_BG = (4, 36, 52)
+# Pixel "preto de padding": nenhum canal acima disso (o mar tem B≈52).
+PAD_DARK_MAX = 24
+PAD_SEAM = 2
+
+
+def _sea_color(map_dir: Path, scan: "ZoomScan") -> tuple[int, int, int]:
+    """Cor mais comum (fora o preto) numa amostra das tiles: o mar/fundo do mapa."""
+    from collections import Counter
+
+    import numpy as np
+
+    cnt: Counter[tuple[int, int, int]] = Counter()
+    for r, c in sorted(scan.tiles)[::7]:
+        a = np.asarray(_open_tile(map_dir / str(scan.zoom) / f"{r}_{c}.webp").convert("RGB"))[::16, ::16].reshape(-1, 3)
+        a = a[a.max(axis=1) > PAD_DARK_MAX]
+        cnt.update(tuple(int(v) for v in px) for px in a)
+    return cnt.most_common(1)[0][0] if cnt else MAP_BG
+
+
+def _clear_edge_padding(im: Image.Image, sides: set[str], bg: tuple[int, int, int] = MAP_BG) -> Image.Image:
+    """Pinta com a cor do mar o preto de padding que o th.gl deixa na borda externa do mapa.
+
+    Só mexe na faixa escura contínua a partir dos lados pedidos (left/right/top/bottom), linha a
+    linha: sombras pretas no meio da tile ficam intactas.
+    """
+    import numpy as np
+
+    if not sides or im.mode != "RGB":
+        return im
+    a = np.asarray(im).copy()
+    dark = a.max(axis=2) <= PAD_DARK_MAX
+    h, w = dark.shape
+    mask = np.zeros_like(dark)
+
+    def grow(run: "np.ndarray", limit: int) -> "np.ndarray":
+        # +2 px: a borda da faixa tem um fio mais claro que vira emenda visível
+        return np.where(run > 0, np.minimum(run + PAD_SEAM, limit), 0)
+
+    if "left" in sides:
+        run = grow(np.cumprod(dark, axis=1).sum(axis=1), w)
+        mask |= np.arange(w)[None, :] < run[:, None]
+    if "right" in sides:
+        run = grow(np.cumprod(dark[:, ::-1], axis=1).sum(axis=1), w)
+        mask |= np.arange(w)[None, :] >= (w - run)[:, None]
+    if "top" in sides:
+        run = grow(np.cumprod(dark, axis=0).sum(axis=0), h)
+        mask |= np.arange(h)[:, None] < run[None, :]
+    if "bottom" in sides:
+        run = grow(np.cumprod(dark[::-1, :], axis=0).sum(axis=0), h)
+        mask |= np.arange(h)[:, None] >= (h - run)[None, :]
+    if not mask.any():
+        return im
+    a[mask] = bg
+    return Image.fromarray(a)
+
+
+def _edge_sides(r: int, c: int, rows: tuple[int, int], cols: tuple[int, int]) -> set[str]:
+    sides: set[str] = set()
+    if c == cols[0]:
+        sides.add("left")
+    if c == cols[1]:
+        sides.add("right")
+    if r == rows[0]:
+        sides.add("top")
+    if r == rows[1]:
+        sides.add("bottom")
+    return sides
+
+
+def _copy_tile(src: Path, dst: Path, sides: set[str], quality: int, bg: tuple[int, int, int]) -> bool:
+    """Copia a tile; nas da borda do mapa, regrava sem o padding preto. True se escreveu."""
+    import shutil
+
+    # a regra do padding mora neste script: mudou o script, as tiles da borda são refeitas
+    newest = max(src.stat().st_mtime, Path(__file__).stat().st_mtime if sides else 0.0)
+    if dst.exists() and dst.stat().st_mtime >= newest:
+        return False
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if sides:
+        im = _open_tile(src)
+        fixed = _clear_edge_padding(im, sides, bg)
+        if fixed is not im:
+            fixed.save(dst, "WEBP", quality=quality, method=6)
+            return True
+    shutil.copy(src, dst)  # mtime = agora: a tile da borda fica mais nova que o script
+    return True
 
 
 def _open_tile(p: Path) -> Image.Image:
@@ -294,14 +383,15 @@ def _open_tile(p: Path) -> Image.Image:
     return im.convert("RGBA" if "A" in im.getbands() else "RGB")
 
 
-def _reduce_children(children: dict[tuple[int, int], Image.Image], size: tuple[int, int]) -> Image.Image:
+def _reduce_children(children: dict[tuple[int, int], Image.Image], size: tuple[int, int],
+                     bg: tuple[int, int, int] = MAP_BG) -> Image.Image:
     """Monta 2x2 filhas e reduz pra uma tile.
 
-    Faltantes: preto (igual ao padding nativo do th.gl) em RGB; transparente em RGBA.
+    Faltantes: cor do mar em RGB; transparente em RGBA.
     """
     w, h = size
     rgba = any(im.mode == "RGBA" for im in children.values())
-    big = Image.new("RGBA", (2 * w, 2 * h), (0, 0, 0, 0)) if rgba else Image.new("RGB", (2 * w, 2 * h), (0, 0, 0))
+    big = Image.new("RGBA", (2 * w, 2 * h), (0, 0, 0, 0)) if rgba else Image.new("RGB", (2 * w, 2 * h), bg)
     for (i, j), im in children.items():
         big.paste(im.convert(big.mode), (j * w, i * h))
     return big.resize(size, Image.Resampling.BOX)
@@ -327,15 +417,15 @@ def build_map(map_dir: Path, out_root: Path, quality: int) -> dict:
 
     copied = generated = skipped = 0
     current: set[tuple[int, int]] = set(scans[zmax].tiles)
+    top_rows, top_cols = scans[zmax].row_range, scans[zmax].col_range
+    sea = _sea_color(map_dir, scans[zmax])
     for r, c in current:
         src = map_dir / str(zmax) / f"{r}_{c}.webp"
         dst = out / str(zmax) / f"{r}_{c}.webp"
-        if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+        if _copy_tile(src, dst, _edge_sides(r, c, top_rows, top_cols), quality, sea):
+            copied += 1
+        else:
             skipped += 1
-            continue
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
-        copied += 1
 
     z = zmax
     while True:
@@ -346,13 +436,13 @@ def build_map(map_dir: Path, out_root: Path, quality: int) -> dict:
         parent_z = z - 1
         parents = {(r // 2, c // 2) for r, c in current}
         native = scans.get(parent_z)
+        native_rows, native_cols = (native.row_range, native.col_range) if native else ((0, 0), (0, 0))
         for pr, pc in sorted(parents):
             dst = out / str(parent_z) / f"{pr}_{pc}.webp"
             dst.parent.mkdir(parents=True, exist_ok=True)
             if native and (pr, pc) in native.tiles:
                 src = map_dir / str(parent_z) / f"{pr}_{pc}.webp"
-                if not (dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime):
-                    shutil.copy2(src, dst)
+                if _copy_tile(src, dst, _edge_sides(pr, pc, native_rows, native_cols), quality, sea):
                     copied += 1
                 continue
             kids = {
@@ -364,7 +454,7 @@ def build_map(map_dir: Path, out_root: Path, quality: int) -> dict:
                 skipped += 1
                 continue
             children = {k: _open_tile(p) for k, p in kids.items()}
-            _reduce_children(children, size).save(dst, "WEBP", quality=quality, method=6)
+            _reduce_children(children, size, sea).save(dst, "WEBP", quality=quality, method=6)
             generated += 1
         current = parents
         z = parent_z
