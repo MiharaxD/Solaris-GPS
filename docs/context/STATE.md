@@ -18,7 +18,7 @@
   pixel; `tools/wuwa_overlays.py` + `tools/build_overlays.py`).
 - `tools/extract_refs.py` → `web/public/refs/` (7 mapas; os outros 3 não têm dados).
 - Marcadores (ticket 11): `tools/extract_markers.py` → `web/public/markers/`. Overworld: 175
-  teleportes, 33 Nexus, 2380 baús, 238 caskets, 10205 plantas, 2593 minérios e 2751 outros
+  teleportes, 33 Nexus, 2380 baús, 364 caskets (126 do Huanglong = `SoundBox`), 10205 plantas, 2593 minérios e 2751 outros
   coletáveis. Painel "Marcadores" com filtro por categoria/subcategoria (salvo no
   localStorage; cada categoria com tipos abre um menu suspenso com busca, todos/nenhum e "só"),
   busca sem acento e popup. Plantas, minérios e coletáveis começam desligados.
@@ -34,10 +34,10 @@
   os `EntityId` do jogo (`e<id>` nos nossos). Ainda casa só por posição no mapa ativo.
 - Importador do appsample (Config. → "Importar appsample…"): script de console no site deles →
   arquivo de ids → tabela local `web/public/appsample.json` (`tools/build_appsample.py`) →
-  marca em todos os mapas. Com o backup real do usuário: 1483 de 1847 casam, e 1204 dos 1221
-  que o th.gl importou do mesmo progresso batem. Ficam de fora: os Sonance Caskets do
-  Huanglong (o `extract_markers.py` não gera nenhum casket perto deles), Mengzhou e Dimmr
-  Plains (sem marcadores nossos) e o Vault (sem teleportes e com poucos baús pra ajustar).
+  marca em todos os mapas. Com o backup real do usuário: 1608 de 1847 casam, e 1205 dos 1221
+  que o th.gl importou do mesmo progresso batem. Ficam de fora: ~60 "Sonance Casket /
+  Windchimer" do Huanglong sem entidade nossa por perto, Mengzhou e Dimmr Plains (sem
+  marcadores nossos) e o Vault (sem teleportes e com poucos baús pra ajustar).
 - Modo anotar fixture (ticket 15): botão "Fixture" grava print + anotação em
   `tracker/fixtures/` pela API local `/api/fixtures`. A captura da tela compartilhada fica
   pro ticket 17.

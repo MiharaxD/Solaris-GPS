@@ -37,7 +37,8 @@ CHEST_TIERS: list[tuple[str, str]] = [
 CHEST_LABELS = {"illusive": "Baú ilusório", "premium": "Baú premium", "advanced": "Baú avançado",
                 "standard": "Baú padrão", "basic": "Baú básico"}
 
-CASKET_TYPES = {"HookSoundBox", "HookPullSoundBox"}
+# SoundBox ("鸣子"): os caskets do Huanglong que fogem; Hook*: os de gancho (Rinascita e depois).
+CASKET_TYPES = {"SoundBox", "HookSoundBox", "HookPullSoundBox"}
 
 # Coletáveis: "<prefixo><número>_<espécie>" no nome da entidade.
 COLLECT_TYPES = {"Collect", "CollectWithHook", "Destructible", "DestructibleWithHook", "Collect3"}
