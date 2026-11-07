@@ -20,6 +20,8 @@ export interface ImportContext {
 }
 
 const MAX_LIST = 3000;
+/** Unidade do jogo nos marcadores (Transform do WutheringData): 10 000 por metro. */
+const GAME_UNITS_PER_M = 10_000;
 
 /** Diálogo: colar/abrir o backup do th.gl → prévia dos casamentos → aplicar com confirmação. */
 export class ImportDialog {
@@ -108,10 +110,10 @@ export class ImportDialog {
       return;
     }
     const meters = Math.min(50, Math.max(0.5, this.radius.valueAsNumber || 3));
-    const r = matchEntries(parsed.entries, ctx.markers, meters * 100);
+    const r = matchEntries(parsed.entries, ctx.markers, meters * GAME_UNITS_PER_M);
     this.result = r;
     const already = r.matches.filter((m) => ctx.isFound(m.marker.id)).length;
-    const scale = r.scale === 1 ? "unidade do jogo" : r.scale === 100 ? "metros" : `×${r.scale}`;
+    const scale = r.scale === 1 ? "unidade do jogo" : r.scale === 100 ? "centímetros" : `×${r.scale}`;
     this.summary.textContent =
       `${parsed.entries.length} entradas (${parsed.invalid.length} inválidas). Casaram ${r.matches.length}` +
       ` (${already} já encontrados), não casaram ${r.unmatched.length}. Escala: ${scale}${r.swapped ? ", eixos trocados" : ""}.`;
@@ -132,7 +134,7 @@ export class ImportDialog {
             {},
             box,
             h("span", { className: "mk-name", textContent: name }),
-            h("span", { className: "mk-count", textContent: found ? "já encontrado" : `${(m.dist / 100).toFixed(1)} m` }),
+            h("span", { className: "mk-count", textContent: found ? "já encontrado" : `${(m.dist / GAME_UNITS_PER_M).toFixed(1)} m` }),
           ),
         ),
       );

@@ -67,12 +67,12 @@ export interface Match<T extends Candidate> {
 export interface MatchResult<T extends Candidate> {
   matches: Match<T>[];
   unmatched: ThglEntry[];
-  /** Fator aplicado às coordenadas do arquivo (o th.gl pode usar metros em vez de cm). */
+  /** Fator aplicado às coordenadas do arquivo (o th.gl usa cm; o jogo, 10 000 por metro). */
   scale: number;
   swapped: boolean;
 }
 
-/** Escalas testadas: unidade do jogo (cm), metros e decímetro. */
+/** Escalas testadas: unidade do jogo, cm (×100), mm (×10) e ×0,01. */
 const SCALES = [1, 100, 10, 0.01];
 
 /**
