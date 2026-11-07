@@ -78,7 +78,7 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
   marcadores mostra e alterna. Cuidado: os ids dos marcadores são a chave do progresso.
 - **Configurações, atalhos e "mais próximo":** `web/src/settingsDialog.ts` (abas Geral e
   Atalhos; o slider de tamanho chama `setMarkerScale` do `markerPanel.ts` → `setScale` do
-  `markerLayer.ts`), `web/src/hotkeys.ts` (combinação por `code`, prefs, conflitos; testes em
+  `markerLayer.ts`; o painel de marcadores recolhe pelo `setCollapsed`), `web/src/hotkeys.ts` (combinação por `code`, prefs, conflitos; testes em
   `hotkeys.test.ts`), `web/src/toast.ts`. No `markerPanel.ts`: `setPlayer`/`updateNearest`
   (linha `.nearest-link`, só entre os itens desenhados e não encontrados), `collectNearest`,
   `undoLast` (histórico da sessão) e `setHideFound` por grupo. A ligação fica no `main.ts`.

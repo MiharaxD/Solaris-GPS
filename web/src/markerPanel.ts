@@ -33,6 +33,7 @@ const OPEN_PREF = "markers.open";
 const HIDE_FOUND_PREF = "markers.hideFound";
 const HIDE_FOUND_CATS_PREF = "markers.hideFoundCats";
 const SCALE_PREF = "markers.scale";
+const COLLAPSED_PREF = "markers.collapsed";
 /** Limites do tamanho dos marcadores nas configurações. */
 export const MARKER_SCALE_MIN = 0.5;
 export const MARKER_SCALE_MAX = 2.5;
@@ -143,6 +144,8 @@ export class MarkerPanel {
   private maps: MapInfo[] = [];
   private readonly layer: MarkerCanvasLayer<GameMarker>;
   private markerScale = loadScale();
+  private collapsed = loadPref(COLLAPSED_PREF) === "1";
+  private collapseBtn!: HTMLButtonElement;
 
   private readonly status = h("p", { className: "mk-status", role: "status" } as Partial<HTMLParagraphElement>);
   private readonly search = h("input", { type: "search", placeholder: "Buscar (ex.: baú premium jinzhou)…" });
@@ -167,6 +170,10 @@ export class MarkerPanel {
     const close = h("button", { type: "button", className: "mk-close", title: "Fechar" }, uiIcon("close", 14));
     close.setAttribute("aria-label", "Fechar");
     close.addEventListener("click", () => this.toggle(false));
+    // recolher: o painel fica só com o cabeçalho, sem fechar
+    const collapse = h("button", { type: "button", className: "mk-close mk-collapse" }, uiIcon("chevron", 14));
+    collapse.addEventListener("click", () => this.setCollapsed(!this.collapsed));
+    this.collapseBtn = collapse;
     this.search.addEventListener("input", () => this.renderResults());
     this.allMaps.append(h("summary", { textContent: "Progresso em todos os mapas" }), this.allMapsList);
     this.allMaps.addEventListener("toggle", () => {
@@ -176,7 +183,7 @@ export class MarkerPanel {
     this.root = h(
       "aside",
       { className: "mk-panel", hidden: !this.open },
-      h("header", { className: "panel-head" }, uiIcon("markers", 18), h("h2", { textContent: "Marcadores" }), close),
+      h("header", { className: "panel-head" }, uiIcon("markers", 18), h("h2", { textContent: "Marcadores" }), collapse, close),
       this.status,
       this.progressLine,
       h("div", { className: "mk-actions" }, this.addBtn),
@@ -185,6 +192,7 @@ export class MarkerPanel {
       this.cats,
       this.allMaps,
     );
+    this.setCollapsed(this.collapsed);
     // linha pontilhada jogador → marcador mais próximo (o que o atalho marcaria)
     this.link = L.polyline([], { className: "nearest-link", interactive: false, dashArray: "2 7", weight: 2.5, lineCap: "round" });
     this.linkEnd = L.circleMarker([0, 0], { className: "nearest-ring", interactive: false, radius: 15, weight: 1.5, fill: false, dashArray: "3 4" });
@@ -230,6 +238,16 @@ export class MarkerPanel {
 
   get isOpen(): boolean {
     return this.open;
+  }
+
+  setCollapsed(on: boolean): void {
+    this.collapsed = on;
+    this.root.classList.toggle("collapsed", on);
+    const label = on ? "Expandir o painel" : "Recolher o painel";
+    this.collapseBtn.title = label;
+    this.collapseBtn.setAttribute("aria-label", label);
+    this.collapseBtn.setAttribute("aria-expanded", String(!on));
+    savePref(COLLAPSED_PREF, on ? "1" : "0");
   }
 
   toggle(force?: boolean): void {

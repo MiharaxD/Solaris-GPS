@@ -610,6 +610,26 @@ body {
   padding: 12px 14px 14px;
 }
 
+/* Recolhido: só o cabeçalho; a seta aponta pra baixo (expandir). */
+.mk-panel.collapsed > :not(.panel-head) {
+  display: none;
+}
+
+.mk-panel.collapsed .panel-head {
+  margin-bottom: -4px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.mk-collapse .ui-icon {
+  transform: rotate(180deg);
+  transition: transform 0.18s var(--ease);
+}
+
+.mk-panel.collapsed .mk-collapse .ui-icon {
+  transform: none;
+}
+
 .mk-panel[hidden] {
   display: none;
 }
