@@ -51,7 +51,9 @@ existir. Python: sempre `.venv/Scripts/python` (3.11).
 - **Ir direto para:** `web/src/mapView.ts` (Leaflet CRS.Simple, troca de mapa e conversão
   pixel↔latlng no `maxZoom`), `web/src/maps.ts` (tipos e leitura do `maps.json`),
   `web/src/main.ts` (bootstrap, troca de mapa, HUD), `web/src/mapPicker.ts` (dropdown),
-  `web/src/storage.ts` (prefs no localStorage) e `web/src/style.css` (tokens em `:root`).
+  `web/src/storage.ts` (prefs no localStorage) e `web/src/style.css` (tokens em `:root`;
+  `--edge` é o recuo de todos os painéis; abaixo de 1600 px a barra vira duas linhas,
+  `.tb-main` com os seletores e `.tb-tools` com os botões).
 - **Visual:** `web/src/style.css` segue o dossiê visual do usuário (claude.ai/artifact/6txRqHdy2ApX8DE28xPzip):
   tokens no `:root`, superfície comum (painel translúcido, linha fina, canto cortado) num seletor
   só no topo, rótulos em Chakra Petch e UI em Inter (`@fontsource`, importadas no `main.ts`).

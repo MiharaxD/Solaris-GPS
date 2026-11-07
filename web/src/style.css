@@ -33,6 +33,9 @@
   --font-ui: "Inter", system-ui, "Segoe UI", sans-serif;
   --font-tech: "Chakra Petch", "Inter", system-ui, sans-serif;
   --cut: 14px;
+  /* distância dos painéis às bordas da tela e entre eles */
+  --edge: 14px;
+  --mk-w: 310px;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
   /* nomes antigos, ainda usados nos módulos */
@@ -290,16 +293,48 @@ body {
 /* ---- Barra superior ---- */
 .toolbar {
   position: fixed;
-  top: 10px;
-  right: 10px;
+  top: var(--edge);
+  right: var(--edge);
   z-index: 1000;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
-  max-width: calc(100vw - 340px);
-  padding: 5px 18px 5px 6px;
+  box-sizing: border-box;
+  /* nunca encosta no painel de marcadores */
+  max-width: calc(100vw - var(--mk-w) - 3 * var(--edge));
+  padding: 6px 20px 6px 8px;
+}
+
+.tb-main,
+.tb-tools {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tb-tools {
+  gap: 2px;
+}
+
+/* Sem largura pra uma linha só: duas linhas, separadas por um fio. */
+@media (max-width: 1599px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .tb-main > select {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .tb-tools {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px solid var(--line-soft);
+  }
 }
 
 .brand {
@@ -374,11 +409,16 @@ body {
   background: var(--panel-solid);
 }
 
+/* Zoom do Leaflet no mesmo recuo dos painéis. */
+.leaflet-bottom.leaflet-right .leaflet-control {
+  margin: 0 var(--edge) var(--edge) 0;
+}
+
 /* ---- HUD de coordenadas ---- */
 .hud {
   position: fixed;
-  left: 10px;
-  bottom: 10px;
+  left: var(--edge);
+  bottom: var(--edge);
   z-index: 1000;
   display: flex;
   gap: 8px;
@@ -413,11 +453,11 @@ body {
 /* ---- Painel lateral direito (calibração, tracker, fixture) ---- */
 .calib-panel {
   position: fixed;
-  top: calc(var(--toolbar-h, 46px) + 18px);
-  right: 10px;
+  top: calc(var(--edge) + var(--toolbar-h, 46px) + var(--edge));
+  right: var(--edge);
   z-index: 1000;
-  width: min(380px, calc(100vw - 20px));
-  max-height: calc(100vh - var(--toolbar-h, 46px) - 80px);
+  width: min(380px, calc(100vw - 2 * var(--edge)));
+  max-height: calc(100vh - var(--toolbar-h, 46px) - 3 * var(--edge) - 70px);
   overflow: auto;
   box-sizing: border-box;
   padding: 12px 14px 14px;
@@ -597,15 +637,16 @@ body {
 
 .mk-panel {
   position: fixed;
-  top: 10px;
-  left: 10px;
+  top: var(--edge);
+  left: var(--edge);
   z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: 10px;
   box-sizing: border-box;
-  width: min(310px, calc(100vw - 20px));
-  max-height: calc(100vh - 56px);
+  width: min(var(--mk-w), calc(100vw - 2 * var(--edge)));
+  /* deixa espaço pro HUD de coordenadas embaixo */
+  max-height: calc(100vh - 2 * var(--edge) - 44px);
   overflow: auto;
   padding: 12px 14px 14px;
 }
@@ -1245,8 +1286,8 @@ body {
 /* Prévia do recorte: sempre visível enquanto compartilha. */
 .trk-preview {
   position: fixed;
-  left: 10px;
-  bottom: 44px;
+  left: var(--edge);
+  bottom: calc(var(--edge) + 38px);
   z-index: 1000;
   padding: 8px 8px 10px;
 }
@@ -1446,10 +1487,13 @@ body.lab {
 
 /* Telas estreitas: barra embaixo do painel de marcadores. */
 @media (max-width: 760px) {
+  :root {
+    --edge: 10px;
+  }
+
   .toolbar {
-    left: 10px;
+    left: var(--edge);
     max-width: none;
-    justify-content: flex-start;
   }
 
   .brand small {
@@ -1457,8 +1501,8 @@ body.lab {
   }
 
   .mk-panel {
-    top: calc(var(--toolbar-h, 46px) + 18px);
-    max-height: calc(100vh - var(--toolbar-h, 46px) - 70px);
+    top: calc(var(--edge) + var(--toolbar-h, 46px) + var(--edge));
+    max-height: calc(100vh - var(--toolbar-h, 46px) - 3 * var(--edge) - 44px);
   }
 }
 

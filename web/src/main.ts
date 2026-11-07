@@ -98,8 +98,14 @@ async function start(): Promise<void> {
     void underground.setMap(info);
   };
 
-  toolbar.append(brand());
-  picker = createMapPicker(toolbar, maps, initial.name, activate);
+  // dois grupos: marca + seletores e os botões; em tela estreita viram duas linhas alinhadas
+  const tbMain = document.createElement("div");
+  tbMain.className = "tb-main";
+  const tbTools = document.createElement("div");
+  tbTools.className = "tb-tools";
+  toolbar.append(tbMain, tbTools);
+  tbMain.append(brand());
+  picker = createMapPicker(tbMain, maps, initial.name, activate);
 
   // Região onde o jogador está (Overworld): limita a busca do tracker e enquadra a região.
   const regionPicker = new RegionPicker((region, byUser) => {
@@ -120,7 +126,7 @@ async function start(): Promise<void> {
     markers.toggle();
     markersBtn.setAttribute("aria-pressed", String(markers.isOpen));
   });
-  toolbar.append(markersBtn);
+  tbTools.append(markersBtn);
   const ugBtn = toolButton("Subterrâneo", "layers", "Mostrar as cavernas e áreas subterrâneas por cima do mapa");
   ugBtn.hidden = true;
   ugBtn.addEventListener("click", () => {
@@ -131,7 +137,7 @@ async function start(): Promise<void> {
   underground.onAvailability = (available) => (ugBtn.hidden = !available);
   underground.toggle(loadPref(UNDERGROUND_PREF) === "1");
   ugBtn.setAttribute("aria-pressed", String(underground.isOn));
-  toolbar.append(ugBtn);
+  tbTools.append(ugBtn);
   const calibBtn = toolButton("Calibrar", "crosshair");
   const fixtureBtn = toolButton("Fixture", "camera", "Anotar um print de tela cheia com a posição real (pra testar o tracker)");
   // Calibrar e Fixture usam o clique no mapa: só um aberto por vez.
@@ -146,14 +152,14 @@ async function start(): Promise<void> {
     calibration.toggle();
     syncModes();
   });
-  toolbar.append(calibBtn);
+  tbTools.append(calibBtn);
   fixtureBtn.addEventListener("click", () => {
     if (!fixtures.isOpen && calibration.isOpen) calibration.toggle(false);
     if (!fixtures.isOpen && tracker.isOpen) tracker.toggle(false);
     fixtures.toggle();
     syncModes();
   });
-  toolbar.append(fixtureBtn);
+  tbTools.append(fixtureBtn);
   const trackerBtn = toolButton("Tracker", "radar", "Compartilhar a tela do jogo e recortar o minimapa");
   trackerBtn.addEventListener("click", () => {
     if (!tracker.isOpen) {
@@ -163,7 +169,7 @@ async function start(): Promise<void> {
     tracker.toggle();
     syncModes();
   });
-  toolbar.append(trackerBtn);
+  tbTools.append(trackerBtn);
   // Atalhos do mapa e configurações (backup, esconder coletados, teclas).
   const describe = markerTitle;
   const collect = async () => {
@@ -196,7 +202,7 @@ async function start(): Promise<void> {
   const settings = new SettingsDialog(markers, hotkeys);
   const settingsBtn = toolButton("Config.", "gear", "Configurações: backup, esconder coletados e atalhos");
   settingsBtn.addEventListener("click", () => settings.open());
-  toolbar.append(settingsBtn);
+  tbTools.append(settingsBtn);
 
   // os ✕ dos painéis fecham sem passar pelos botões
   for (const r of [calibration.root, fixtures.root, tracker.root]) new MutationObserver(syncModes).observe(r, { attributes: true, attributeFilter: ["hidden"] });
