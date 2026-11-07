@@ -1,10 +1,10 @@
 /**
- * Configurações: aba "Geral" (backup, restaurar, importar do th.gl e esconder coletados) e aba
+ * Configurações: aba "Geral" (backup, restaurar, importar, tamanho dos marcadores e esconder coletados) e aba
  * "Atalhos" (editar as teclas do mapa). Tudo fica no navegador.
  */
 import { comboLabel, comboOf, conflicts, HOTKEY_ACTIONS, type HotkeyAction, type Hotkeys } from "./hotkeys";
 import { uiIcon } from "./icons";
-import type { HideFoundGroup, MarkerPanel } from "./markerPanel";
+import { MARKER_SCALE_MAX, MARKER_SCALE_MIN, type HideFoundGroup, type MarkerPanel } from "./markerPanel";
 
 function h<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -116,7 +116,34 @@ export class SettingsDialog {
       return h("label", { className: "mk-check" }, box, g.label);
     });
 
+    const pct = (v: number) => `${Math.round(v * 100)}%`;
+    const range = h("input", {
+      type: "range",
+      className: "set-range",
+      min: String(MARKER_SCALE_MIN),
+      max: String(MARKER_SCALE_MAX),
+      step: "0.05",
+      value: String(this.markers.getMarkerScale()),
+    });
+    range.setAttribute("aria-label", "Tamanho dos marcadores");
+    const value = h("output", { className: "set-range-value", textContent: pct(this.markers.getMarkerScale()) });
+    range.addEventListener("input", () => {
+      const v = Number(range.value);
+      this.markers.setMarkerScale(v);
+      value.textContent = pct(v);
+    });
+    const resetSize = h("button", { type: "button", className: "mk-link", textContent: "padrão" });
+    resetSize.addEventListener("click", () => {
+      this.markers.setMarkerScale(1);
+      range.value = "1";
+      value.textContent = pct(1);
+    });
+
     return [
+      h("section", { className: "set-section" },
+        h("h3", { textContent: "Tamanho dos marcadores" }),
+        h("p", { className: "set-help", textContent: "Aumenta ou diminui os ícones no mapa. O tamanho ainda varia um pouco com o zoom." }),
+        h("div", { className: "set-range-row" }, range, value, resetSize)),
       h("section", { className: "set-section" },
         h("h3", { textContent: "Progresso" }),
         h("p", { className: "set-help", textContent: "O progresso fica só neste navegador. Faça backup de vez em quando." }),

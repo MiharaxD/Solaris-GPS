@@ -28,6 +28,8 @@ export class MarkerCanvasLayer<T> extends L.Layer {
   private highlight: PlacedItem<T> | null = null;
   private frame = 0;
   private lmap: L.Map | null = null;
+  /** Multiplicador do tamanho escolhido pelo usuário (1 = padrão). */
+  private scale = 1;
 
   constructor(private readonly maxZoom: () => number) {
     super();
@@ -37,6 +39,11 @@ export class MarkerCanvasLayer<T> extends L.Layer {
   setItems(items: PlacedItem<T>[]): void {
     this.items = items;
     if (this.highlight && !items.includes(this.highlight)) this.highlight = null;
+    this.schedule();
+  }
+
+  setScale(scale: number): void {
+    this.scale = scale;
     this.schedule();
   }
 
@@ -122,7 +129,7 @@ export class MarkerCanvasLayer<T> extends L.Layer {
     const ox = origin.x + tl.x;
     const oy = origin.y + tl.y;
     // longe do zoom nativo os ícones encolhem (até 55%) pra não virar uma massa só
-    const k = Math.min(1.15, Math.max(0.55, 1 + 0.1 * (zoom - this.maxZoom())));
+    const k = Math.min(1.15, Math.max(0.55, 1 + 0.1 * (zoom - this.maxZoom()))) * this.scale;
     const drawn: typeof this.drawn = [];
     const redraw = () => this.schedule();
     ctx.imageSmoothingQuality = "high";

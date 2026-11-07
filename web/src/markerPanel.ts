@@ -32,11 +32,20 @@ const FILTER_PREF = "markers.filter";
 const OPEN_PREF = "markers.open";
 const HIDE_FOUND_PREF = "markers.hideFound";
 const HIDE_FOUND_CATS_PREF = "markers.hideFoundCats";
+const SCALE_PREF = "markers.scale";
+/** Limites do tamanho dos marcadores nas configurações. */
+export const MARKER_SCALE_MIN = 0.5;
+export const MARKER_SCALE_MAX = 2.5;
 /** Grupos do "esconder coletados" nas configurações: baús, caskets e o resto. */
 export type HideFoundGroup = "chest" | "casket" | "other";
 const groupOf = (cat: string): HideFoundGroup => (cat === "chest" || cat === "casket" ? cat : "other");
 /** Quantas marcações o desfazer guarda. */
 const UNDO_LIMIT = 50;
+
+function loadScale(): number {
+  const v = Number(loadPref(SCALE_PREF));
+  return Number.isFinite(v) && v > 0 ? Math.min(MARKER_SCALE_MAX, Math.max(MARKER_SCALE_MIN, v)) : 1;
+}
 
 function loadHideFound(): Set<HideFoundGroup> {
   const raw = loadPref(HIDE_FOUND_CATS_PREF);
@@ -133,6 +142,7 @@ export class MarkerPanel {
   private readonly subQuery = new Map<string, string>();
   private maps: MapInfo[] = [];
   private readonly layer: MarkerCanvasLayer<GameMarker>;
+  private markerScale = loadScale();
 
   private readonly status = h("p", { className: "mk-status", role: "status" } as Partial<HTMLParagraphElement>);
   private readonly search = h("input", { type: "search", placeholder: "Buscar (ex.: baú premium jinzhou)…" });
@@ -152,6 +162,7 @@ export class MarkerPanel {
     private readonly saveMapPatch: (map: string, patch: Partial<MapDataV1>) => Promise<void>,
   ) {
     this.layer = new MarkerCanvasLayer(() => this.info?.maxZoom ?? 0);
+    this.layer.setScale(this.markerScale);
     this.layer.addTo(view.leaflet);
     const close = h("button", { type: "button", className: "mk-close", title: "Fechar" }, uiIcon("close", 14));
     close.setAttribute("aria-label", "Fechar");
@@ -542,6 +553,18 @@ export class MarkerPanel {
     } catch (e) {
       return `Backup inválido: ${(e as Error).message}.`;
     }
+  }
+
+  // ---- Tamanho dos marcadores (configurações) ----
+
+  getMarkerScale(): number {
+    return this.markerScale;
+  }
+
+  setMarkerScale(scale: number): void {
+    this.markerScale = Math.min(MARKER_SCALE_MAX, Math.max(MARKER_SCALE_MIN, scale));
+    savePref(SCALE_PREF, String(this.markerScale));
+    this.layer.setScale(this.markerScale);
   }
 
   // ---- Esconder coletados (configurações) ----
